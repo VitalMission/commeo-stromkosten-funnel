@@ -196,13 +196,14 @@ next.onclick = () => {
     answers:steps.slice(0,-1).map((step,index)=>({question:step.short,answer:data[index]})),
     ...data.campaign
   });
-  if(typeof window.fbq==='function') window.fbq('track',fit.tier==='C'?'CompleteRegistration':'Lead',{lead_tier:fit.tier,lead_score:fit.score});
   const result = fit.tier==='A'
     ? {label:'Sehr hohe Projektpassung',title:'Ihr Projekt passt sehr gut zu Commeo.',copy:'Ihre Angaben zeigen ein konkretes und wirtschaftlich relevantes Projekt. Ein Commeo-Experte priorisiert Ihre Anfrage und meldet sich persönlich bei Ihnen.'}
     : fit.tier==='B'
       ? {label:'Gute Projektpassung',title:'Ihre Ausgangslage ist vielversprechend.',copy:'Ein Commeo-Experte prüft jetzt Ihre Angaben und die stärksten Einsparhebel. Sie erhalten anschließend eine persönliche Einschätzung.'}
       : {label:'Individuelle Prüfung erforderlich',title:'Wir prüfen Ihre Ausgangslage genauer.',copy:'Einige Angaben benötigen eine fachliche Einordnung. Commeo prüft, ob und mit welchem Ansatz ein wirtschaftliches Einsparpotenzial besteht.'};
-  document.querySelector('.quiz-card').innerHTML = `<div class="success"><span>✓</span><p class="section-label">${result.label}</p><h1>${result.title}</h1><p>${result.copy}</p><a class="btn" href="/">Zurück zur Startseite →</a></div>`;
+  sessionStorage.setItem('commeo_lead_pending',JSON.stringify({...result,score:fit.score,tier:fit.tier,campaign:data.campaign}));
+  sessionStorage.removeItem('commeo_lead_fired');
+  location.href = '/danke.html';
 };
 
 back.onclick = () => {
