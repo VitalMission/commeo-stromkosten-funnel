@@ -1,0 +1,12 @@
+# Secrets. ADMIN_PASSWORD and the Neon credentials live here; pull them with
+# `vercel env pull .env.local` rather than committing them.
+.env*
+
+node_modules
+.vercel
+.DS_Store
+
+# Written by the Vercel Neon marketplace integration, not part of the app.
+.agents/
+.claude/
+skills-lock.json

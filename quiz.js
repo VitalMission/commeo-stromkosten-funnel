@@ -179,13 +179,34 @@ function render(){
   });
 }
 
-next.onclick = () => {
+next.onclick = async () => {
   if(current < steps.length-1){
     current++;
     render();
     return;
   }
   const fit = scoreLead();
+
+  // Persist the lead. Scoring stays client-side for the dataLayer event below;
+  // the endpoint recomputes its own score and ignores whatever we'd claim.
+  // Deliberately non-blocking: if the database is unreachable the visitor still
+  // reaches the thank-you page and the conversion still fires. Losing the row is
+  // bad, losing the conversion as well would be worse.
+  try {
+    const answers = Object.fromEntries(
+      Object.keys(data)
+        .filter(key => /^\d+$/.test(key) && Number(key) < steps.length-1)
+        .map(key => [key, data[key]])
+    );
+    const response = await fetch('/api/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact: data.contact, answers, campaign: data.campaign })
+    });
+    if(!response.ok) console.error('lead endpoint returned', response.status);
+  } catch(error) {
+    console.error('lead persist failed', error);
+  }
   const event = `qualified_lead_${fit.tier.toLowerCase()}`;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({

@@ -1,1 +1,12 @@
-{"scripts":{"dev":"node server.mjs","build":"node -e \"console.log('Static build ready')\""},"dependencies":{},"devDependencies":{}}
+{
+  "name": "commeo-stromkosten-funnel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "node -e \"console.log('Static build ready')\""
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  }
+}
