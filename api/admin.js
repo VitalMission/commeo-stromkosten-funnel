@@ -4,6 +4,55 @@ import { sql, ensureSchema } from './_db.js';
 const REALM = 'Commeo Leads';
 const PAGE_SIZE = 500;
 
+const MAX_ATTEMPTS = 5;        // wrong passwords before a client is locked out
+const WINDOW_MS = 15 * 60_000; // attempts older than this stop counting
+const LOCKOUT_MS = 15 * 60_000;
+
+/**
+ * Failed attempts per client, so a password cannot simply be enumerated. The
+ * repository is public: the endpoint and the fact that it is HTTP Basic are
+ * both readable, which leaves the password as the only obstacle.
+ *
+ * Held in memory on purpose. This app runs as a single Node server (see
+ * server.mjs), so one map covers it. If it is ever split across instances the
+ * counter becomes per-instance and the effective limit multiplies -- still far
+ * better than none, but that is the moment to move this into Postgres.
+ */
+const attempts = new Map();
+
+function clientKey(req) {
+  const forwarded = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || req.socket?.remoteAddress || 'unknown';
+}
+
+function lockoutRemaining(key) {
+  const entry = attempts.get(key);
+  if (!entry?.blockedUntil) return 0;
+  const left = entry.blockedUntil - Date.now();
+  if (left <= 0) {
+    attempts.delete(key);
+    return 0;
+  }
+  return left;
+}
+
+function noteFailure(key) {
+  const now = Date.now();
+  const entry = attempts.get(key);
+  if (!entry || now - entry.firstAt > WINDOW_MS) {
+    attempts.set(key, { count: 1, firstAt: now, blockedUntil: 0 });
+    return;
+  }
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) entry.blockedUntil = now + LOCKOUT_MS;
+  // Keep the map from growing without bound on a long-lived instance.
+  if (attempts.size > 5000) {
+    for (const [k, v] of attempts) {
+      if (now - v.firstAt > WINDOW_MS && !v.blockedUntil) attempts.delete(k);
+    }
+  }
+}
+
 function safeEqual(a, b) {
   const left = Buffer.from(a, 'utf8');
   const right = Buffer.from(b, 'utf8');
@@ -42,10 +91,19 @@ export default async function handler(req, res) {
   if (!process.env.ADMIN_PASSWORD) {
     return res.status(503).send('ADMIN_PASSWORD is not configured.');
   }
+  const key = clientKey(req);
+  const locked = lockoutRemaining(key);
+  if (locked) {
+    // No WWW-Authenticate here: re-prompting invites another guess.
+    res.setHeader('Retry-After', String(Math.ceil(locked / 1000)));
+    return res.status(429).send('Zu viele Fehlversuche. Bitte spaeter erneut versuchen.');
+  }
   if (!authorized(req)) {
+    noteFailure(key);
     res.setHeader('WWW-Authenticate', `Basic realm="${REALM}", charset="UTF-8"`);
     return res.status(401).send('Authentifizierung erforderlich.');
   }
+  attempts.delete(key);
 
   await ensureSchema();
   const rows = await sql`
