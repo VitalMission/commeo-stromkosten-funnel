@@ -6,6 +6,35 @@ import adminHandler from './api/admin.js';
 import leadHandler from './api/lead.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Never called. On Vercel's Node preset this server is bundled as a function, and the bundler only ships
+ * files it sees read at a fixed path -- `path.resolve(root, rel)` below is built per request, so without
+ * this the pages, styles, scripts and images never reached the function and every one of them answered
+ * "Not found". Listing them as fs reads is what makes the bundler include them (neither a bare
+ * `new URL()` nor vercel.json `includeFiles` did, on this preset). Add a file here when the site gains one.
+ */
+// eslint-disable-next-line no-unused-vars
+function bundledPageFiles() {
+  return [
+    fs.readFileSync(new URL('./index.html', import.meta.url)),
+    fs.readFileSync(new URL('./check.html', import.meta.url)),
+    fs.readFileSync(new URL('./danke.html', import.meta.url)),
+    fs.readFileSync(new URL('./styles.css', import.meta.url)),
+    fs.readFileSync(new URL('./main.js', import.meta.url)),
+    fs.readFileSync(new URL('./quiz.js', import.meta.url)),
+    fs.readFileSync(new URL('./consent.js', import.meta.url)),
+    fs.readFileSync(new URL('./danke.js', import.meta.url)),
+    fs.readFileSync(new URL('./tracking.js', import.meta.url)),
+    fs.readFileSync(new URL('./commeo-logo.png', import.meta.url)),
+    fs.readFileSync(new URL('./ecs.png', import.meta.url)),
+    fs.readFileSync(new URL('./hero-bg.png', import.meta.url)),
+    fs.readFileSync(new URL('./hero-industrial-v2.png', import.meta.url)),
+    fs.readFileSync(new URL('./powermagic.png', import.meta.url)),
+    fs.readFileSync(new URL('./powermaster.png', import.meta.url)),
+    fs.readFileSync(new URL('./powerup.png', import.meta.url))
+  ];
+}
 const args = process.argv.slice(2);
 const p = args.indexOf('--port');
 const port = p > -1 ? Number(args[p + 1]) : Number(process.env.PORT) || 4173;
