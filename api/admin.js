@@ -72,6 +72,20 @@ function authorized(req) {
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
+/**
+ * The funnel stores the website exactly as typed, which is usually "www.firma.de" or "firma.de" with no
+ * scheme -- as an href that is a relative path, so the link opened stromkosten.commeo.com/www.firma.de.
+ * Add https:// when there is no scheme, and refuse any scheme other than http(s): the value comes from a
+ * public form, and a "javascript:" link here would run in the admin's session.
+ */
+function websiteHref(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return null;
+  return `https://${raw.replace(/^\/+/, '')}`;
+}
+
 const csvCell = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
 function flatten(answers) {
@@ -137,7 +151,7 @@ export default async function handler(req, res) {
       <td><strong>${escapeHtml(row.company)}</strong><br><span class="muted">${escapeHtml(row.first_name)} ${escapeHtml(row.last_name)}</span></td>
       <td><a href="mailto:${escapeHtml(row.email)}">${escapeHtml(row.email)}</a><br><a href="tel:${escapeHtml(row.phone)}">${escapeHtml(row.phone)}</a></td>
       <td class="nowrap">${escapeHtml(row.zip)}</td>
-      <td>${row.website ? `<a href="${escapeHtml(row.website)}" rel="noreferrer noopener" target="_blank">Website</a>` : '<span class="muted">–</span>'}</td>
+      <td>${websiteHref(row.website) ? `<a href="${escapeHtml(websiteHref(row.website))}" rel="noreferrer noopener" target="_blank">Website</a>` : '<span class="muted">–</span>'}</td>
       <td class="answers">${flatten(row.answers).map(item => `<span>${escapeHtml(item)}</span>`).join('')}</td>
       <td class="answers">${Object.entries(row.campaign).map(([key, value]) => `<span>${escapeHtml(key)}: ${escapeHtml(value)}</span>`).join('') || '<span class="muted">direkt</span>'}</td>
     </tr>`).join('');
