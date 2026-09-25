@@ -1,7 +1,8 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { sql, ensureSchema } from './_db.js';
 
-const REALM = 'Commeo Leads';
+const COOKIE = 'commeo_admin';
+const SESSION_S = 12 * 60 * 60; // a login lasts one working day
 const PAGE_SIZE = 500;
 
 const MAX_ATTEMPTS = 5;        // wrong passwords before a client is locked out
@@ -10,8 +11,8 @@ const LOCKOUT_MS = 15 * 60_000;
 
 /**
  * Failed attempts per client, so a password cannot simply be enumerated. The
- * repository is public: the endpoint and the fact that it is HTTP Basic are
- * both readable, which leaves the password as the only obstacle.
+ * repository is public: the endpoint and its login form are both readable,
+ * which leaves the password as the only obstacle.
  *
  * Held in memory on purpose. This app runs as a single Node server (see
  * server.mjs), so one map covers it. If it is ever split across instances the
@@ -60,13 +61,78 @@ function safeEqual(a, b) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+/**
+ * The session is "<expiry>.<hmac>", signed with the admin password itself: no second secret to manage,
+ * and changing ADMIN_PASSWORD signs everybody out.
+ */
+function sign(expiry) {
+  return createHmac('sha256', process.env.ADMIN_PASSWORD)
+    .update(`${process.env.ADMIN_USERNAME}|${expiry}`)
+    .digest('hex');
+}
+
+function sessionCookie(req) {
+  const match = (req.headers.cookie || '').match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
 function authorized(req) {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const header = req.headers.authorization || '';
-  if (!header.startsWith('Basic ')) return false;
-  const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
-  return safeEqual(decoded.slice(decoded.indexOf(':') + 1), expected);
+  const [expiry, mac] = sessionCookie(req).split('.');
+  if (!expiry || !mac || Number(expiry) * 1000 < Date.now()) return false;
+  return safeEqual(mac, sign(expiry));
+}
+
+function startSession(res) {
+  const expiry = Math.floor(Date.now() / 1000) + SESSION_S;
+  res.setHeader('Set-Cookie',
+    `${COOKIE}=${expiry}.${sign(expiry)}; Path=/; Max-Age=${SESSION_S}; HttpOnly; Secure; SameSite=Strict`);
+}
+
+function endSession(res) {
+  res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`);
+}
+
+async function readForm(req) {
+  let raw = '';
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > 4096) break; // a login form is two short fields
+  }
+  return new URLSearchParams(raw);
+}
+
+function credentialsMatch(form) {
+  const user = String(form.get('username') || '').trim().toLowerCase();
+  const expectedUser = String(process.env.ADMIN_USERNAME).trim().toLowerCase();
+  // Both compared every time, so a wrong username takes as long as a wrong password.
+  const userOk = safeEqual(user, expectedUser);
+  const passOk = safeEqual(String(form.get('password') || ''), process.env.ADMIN_PASSWORD);
+  return userOk && passOk;
+}
+
+function loginPage(message = '') {
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Anmelden · Commeo Leads</title><style>
+:root{--bg:#0f1115;--card:#171a21;--line:#272b34;--text:#e7e9ee;--muted:#8b93a5;--accent:#4ade80;--err:#f87171}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+form{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 28px}
+h1{margin:0 0 4px;font-size:20px;letter-spacing:-.01em}p.sub{margin:0 0 24px;color:var(--muted);font-size:13px}
+label{display:block;margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+input{width:100%;margin:0 0 18px;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
+input:focus{outline:none;border-color:var(--accent)}
+button{width:100%;padding:12px;border:0;border-radius:8px;background:var(--accent);color:#052e16;font:inherit;font-weight:600;cursor:pointer}
+button:hover{filter:brightness(1.08)}.err{margin:0 0 18px;padding:10px 12px;border-radius:8px;background:rgba(248,113,113,.12);color:var(--err);font-size:13px}
+</style></head><body>
+<form method="post" action="/admin" autocomplete="on">
+  <h1>Commeo Leads</h1><p class="sub">Stromkosten-Funnel · Anmeldung</p>
+  ${message ? `<p class="err">${escapeHtml(message)}</p>` : ''}
+  <label for="username">Benutzername</label>
+  <input id="username" name="username" autocomplete="username" required autofocus>
+  <label for="password">Passwort</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" required>
+  <button type="submit">Anmelden</button>
+</form></body></html>`;
 }
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -102,22 +168,40 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
 
-  if (!process.env.ADMIN_PASSWORD) {
-    return res.status(503).send('ADMIN_PASSWORD is not configured.');
+  if (!process.env.ADMIN_PASSWORD || !process.env.ADMIN_USERNAME) {
+    return res.status(503).send('ADMIN_USERNAME / ADMIN_PASSWORD are not configured.');
   }
-  const key = clientKey(req);
-  const locked = lockoutRemaining(key);
-  if (locked) {
-    // No WWW-Authenticate here: re-prompting invites another guess.
-    res.setHeader('Retry-After', String(Math.ceil(locked / 1000)));
-    return res.status(429).send('Zu viele Fehlversuche. Bitte spaeter erneut versuchen.');
+  const html = (code, body) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(code).send(body);
+  };
+  const redirect = to => {
+    res.setHeader('Location', to);
+    return res.status(303).send('');
+  };
+
+  if (new URL(req.url, 'http://x').searchParams.has('logout')) {
+    endSession(res);
+    return redirect('/admin');
   }
-  if (!authorized(req)) {
-    noteFailure(key);
-    res.setHeader('WWW-Authenticate', `Basic realm="${REALM}", charset="UTF-8"`);
-    return res.status(401).send('Authentifizierung erforderlich.');
+
+  if (req.method === 'POST') {
+    const key = clientKey(req);
+    const locked = lockoutRemaining(key);
+    if (locked) {
+      res.setHeader('Retry-After', String(Math.ceil(locked / 1000)));
+      return html(429, loginPage('Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.'));
+    }
+    if (!credentialsMatch(await readForm(req))) {
+      noteFailure(key);
+      return html(401, loginPage('Benutzername oder Passwort ist falsch.'));
+    }
+    attempts.delete(key);
+    startSession(res);
+    return redirect('/admin');
   }
-  attempts.delete(key);
+
+  if (!authorized(req)) return html(200, loginPage());
 
   await ensureSchema();
   const rows = await sql`
@@ -180,7 +264,7 @@ tr:hover td{background:var(--card)}
 <header>
   <div><h1>Leads · Stromkosten-Funnel</h1>
   <div class="stats"><span><b>${rows.length}</b> gesamt</span><span>A: <b>${tally('A')}</b></span><span>B: <b>${tally('B')}</b></span><span>C: <b>${tally('C')}</b></span></div></div>
-  <a class="btn" href="?format=csv">CSV exportieren</a>
+  <div><a class="btn" href="?format=csv">CSV exportieren</a> <a class="btn" href="/admin?logout">Abmelden</a></div>
 </header>
 ${rows.length ? `<div class="wrap"><table><thead><tr>
 <th>#</th><th>Eingang</th><th>Score</th><th>Firma / Person</th><th>Kontakt</th><th>PLZ</th><th>Web</th><th>Antworten</th><th>Kampagne</th>
