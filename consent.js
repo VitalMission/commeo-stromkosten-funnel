@@ -1,25 +1,32 @@
 (function(){
-  const key = 'commeo_cookie_consent';
-  const pixelSrc = '/tracking.js?v=2';
+  // v2: the earlier consent only covered the Meta Pixel. Google Ads was added
+  // later, so everyone is asked again rather than reusing a narrower yes.
+  const key = 'commeo_cookie_consent_v2';
+  const scripts = ['/tracking.js?v=2','/google-ads.js?v=1'];
 
   function notify(value){
     window.dispatchEvent(new CustomEvent('commeo:marketing-consent',{detail:{value}}));
   }
 
-  function loadPixel(){
-    if(document.querySelector(`script[src="${pixelSrc}"]`)){
-      if(typeof window.fbq === 'function') notify('accepted');
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = pixelSrc;
-    script.async = true;
-    script.onload = () => notify('accepted');
-    document.head.appendChild(script);
+  function loadScript(src){
+    return new Promise(resolve => {
+      if(document.querySelector(`script[src="${src}"]`)) return resolve();
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
+    });
   }
 
-  function removeMetaCookies(){
-    ['_fbp','_fbc'].forEach(name => {
+  // Notify once both tags are defined, so danke.js fires the conversion on both.
+  function loadMarketing(){
+    Promise.all(scripts.map(loadScript)).then(() => notify('accepted'));
+  }
+
+  function removeMarketingCookies(){
+    ['_fbp','_fbc','_gcl_au','_gcl_aw','_gcl_dc'].forEach(name => {
       document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
       document.cookie = `${name}=; Max-Age=0; path=/; domain=.${location.hostname}; SameSite=Lax`;
     });
@@ -33,9 +40,9 @@
   function choose(value){
     localStorage.setItem(key,value);
     closeBanner();
-    if(value === 'accepted') loadPixel();
+    if(value === 'accepted') loadMarketing();
     else {
-      removeMetaCookies();
+      removeMarketingCookies();
       notify('rejected');
     }
   }
@@ -53,7 +60,7 @@
       <div class="cookie-copy">
         <p class="section-label">Datenschutz-Einstellungen</p>
         <h2 id="cookie-title">Dürfen wir die Nutzung dieser Seite messen?</h2>
-        <p>Wir verwenden den Meta Pixel, um Kampagnen auszuwerten und den Funnel zu verbessern. Er wird erst nach Ihrer Zustimmung geladen. Notwendige Funktionen des Potenzial-Checks funktionieren auch ohne Marketing-Cookies.</p>
+        <p>Wir verwenden den Meta Pixel und das Conversion-Tracking von Google Ads, um Kampagnen auszuwerten und den Funnel zu verbessern. Beide werden erst nach Ihrer Zustimmung geladen. Notwendige Funktionen des Potenzial-Checks funktionieren auch ohne Marketing-Cookies.</p>
         <a href="https://www.commeo.com/datenschutz/" target="_blank" rel="noopener">Mehr zum Datenschutz</a>
       </div>
       <div class="cookie-actions">
@@ -78,7 +85,7 @@
   function init(){
     addSettingsButton();
     const consent = localStorage.getItem(key);
-    if(consent === 'accepted') loadPixel();
+    if(consent === 'accepted') loadMarketing();
     else if(consent !== 'rejected') showBanner();
   }
 

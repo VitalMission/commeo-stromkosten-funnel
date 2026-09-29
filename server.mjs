@@ -26,6 +26,7 @@ function bundledPageFiles() {
     fs.readFileSync(new URL('./consent.js', import.meta.url)),
     fs.readFileSync(new URL('./danke.js', import.meta.url)),
     fs.readFileSync(new URL('./tracking.js', import.meta.url)),
+    fs.readFileSync(new URL('./google-ads.js', import.meta.url)),
     fs.readFileSync(new URL('./commeo-logo.png', import.meta.url)),
     fs.readFileSync(new URL('./ecs.png', import.meta.url)),
     fs.readFileSync(new URL('./hero-bg.png', import.meta.url)),

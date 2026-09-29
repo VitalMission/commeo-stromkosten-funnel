@@ -2,7 +2,8 @@ const pendingLead = sessionStorage.getItem('commeo_lead_pending');
 let leadData = null;
 
 function fireLead(){
-  if(!leadData || sessionStorage.getItem('commeo_lead_fired') || typeof window.fbq !== 'function') return;
+  if(!leadData || sessionStorage.getItem('commeo_lead_fired')) return;
+  if(typeof window.fbq !== 'function' && typeof window.gtag !== 'function') return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
     event:'lead',
@@ -11,11 +12,19 @@ function fireLead(){
     lead_tier:leadData.tier,
     ...leadData.campaign
   });
-  window.fbq('track','Lead',{
-    content_name:'Commeo Stromkosten Potenzialanalyse',
-    lead_tier:leadData.tier,
-    lead_score:leadData.score
-  });
+  if(typeof window.fbq === 'function'){
+    window.fbq('track','Lead',{
+      content_name:'Commeo Stromkosten Potenzialanalyse',
+      lead_tier:leadData.tier,
+      lead_score:leadData.score
+    });
+  }
+  const ads = window.commeoGoogleAds;
+  if(typeof window.gtag === 'function' && ads){
+    const send = label => label && window.gtag('event','conversion',{send_to:`${ads.id}/${label}`});
+    send(ads.labels.lead);
+    if(leadData.tier === 'A' || leadData.tier === 'B') send(ads.labels.qualifiedLead);
+  }
   sessionStorage.setItem('commeo_lead_fired','1');
   sessionStorage.removeItem('commeo_lead_pending');
 }
