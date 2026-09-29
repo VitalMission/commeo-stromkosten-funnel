@@ -9,7 +9,7 @@ window.commeoGoogleAds = {
   id: 'AW-11362368068',
   labels: {
     lead: '',          // every submitted Potenzialanalyse
-    qualifiedLead: ''  // tier A or B only
+    qualifiedLead: 'm3fCCLL5pIodEMT0_6kq'  // tier A or B only
   }
 };
 

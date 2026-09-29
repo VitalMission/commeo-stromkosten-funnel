@@ -2,7 +2,7 @@
   // v2: the earlier consent only covered the Meta Pixel. Google Ads was added
   // later, so everyone is asked again rather than reusing a narrower yes.
   const key = 'commeo_cookie_consent_v2';
-  const scripts = ['/tracking.js?v=2','/google-ads.js?v=1'];
+  const scripts = ['/tracking.js?v=2','/google-ads.js?v=2'];
 
   function notify(value){
     window.dispatchEvent(new CustomEvent('commeo:marketing-consent',{detail:{value}}));
