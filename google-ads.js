@@ -1,16 +1,13 @@
 // Google Ads tag (gtag.js). Loaded by consent.js only after the visitor accepts
 // marketing cookies, exactly like the Meta Pixel in tracking.js.
 //
-// Conversion labels come from Google Ads (Goals -> Conversions -> the action ->
+// The conversion label comes from Google Ads (Goals -> Conversions -> "Lead" ->
 // Tag setup -> "Install the tag yourself": the part after the slash in
-// send_to 'AW-11362368068/<label>'). An empty label means that conversion is
-// not fired yet; danke.js reads them from here.
+// send_to 'AW-11362368068/<label>'). danke.js fires it for every submitted
+// Potenzialanalyse, whatever the lead tier.
 window.commeoGoogleAds = {
   id: 'AW-11362368068',
-  labels: {
-    lead: '',          // every submitted Potenzialanalyse
-    qualifiedLead: 'm3fCCLL5pIodEMT0_6kq'  // tier A or B only
-  }
+  leadLabel: 'm3fCCLL5pIodEMT0_6kq'
 };
 
 window.dataLayer = window.dataLayer || [];

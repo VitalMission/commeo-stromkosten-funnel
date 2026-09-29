@@ -20,10 +20,8 @@ function fireLead(){
     });
   }
   const ads = window.commeoGoogleAds;
-  if(typeof window.gtag === 'function' && ads){
-    const send = label => label && window.gtag('event','conversion',{send_to:`${ads.id}/${label}`});
-    send(ads.labels.lead);
-    if(leadData.tier === 'A' || leadData.tier === 'B') send(ads.labels.qualifiedLead);
+  if(typeof window.gtag === 'function' && ads?.leadLabel){
+    window.gtag('event','conversion',{send_to:`${ads.id}/${ads.leadLabel}`});
   }
   sessionStorage.setItem('commeo_lead_fired','1');
   sessionStorage.removeItem('commeo_lead_pending');
