@@ -1,1 +1,1 @@
-{"scripts":{"dev":"node server.mjs","build":"node -e \"console.log('Static build ready')\""},"dependencies":{},"devDependencies":{}}
+{"scripts":{"dev":"node dev-server.mjs","build":"node build.mjs"},"dependencies":{},"devDependencies":{}}
