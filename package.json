@@ -1,1 +1,1 @@
-{"scripts":{"dev":"node dev-server.mjs","build":"node build.mjs"},"dependencies":{},"devDependencies":{}}
+{"type":"module","scripts":{"dev":"node dev-server.mjs","build":"node build.mjs"},"dependencies":{},"devDependencies":{}}
