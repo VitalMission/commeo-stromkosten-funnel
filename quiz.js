@@ -70,9 +70,11 @@ function validateForm(){
   const required = [...fields.querySelectorAll('input[required]')];
   const email = fields.querySelector('input[name="email"]');
   const zip = fields.querySelector('input[name="zip"]');
+  const website = fields.querySelector('input[name="website"]');
   const valid = required.every(input => input.type==='checkbox' ? input.checked : input.value.trim())
     && (!email || email.validity.valid)
-    && (!zip || /^\d{5}$/.test(zip.value.trim()));
+    && (!zip || /^\d{5}$/.test(zip.value.trim()))
+    && (!website || !website.value.trim() || website.validity.valid);
   data[current] = valid;
   next.disabled = !valid;
 }
@@ -130,7 +132,7 @@ function render(){
   next.disabled = !stepComplete(step,current);
 
   if(step.form){
-    fields.innerHTML = `<div class="field-row"><label>Vorname<input name="first" autocomplete="given-name" required></label><label>Nachname<input name="last" autocomplete="family-name" required></label></div><label>Unternehmen<input name="company" autocomplete="organization" required></label><div class="field-row"><label>Geschäftliche E-Mail<input name="email" type="email" autocomplete="email" required></label><label>Telefon für Rückfragen<input name="phone" type="tel" autocomplete="tel" required></label></div><div class="field-row"><label>PLZ des Standorts<input name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" required></label><label>Website <span>(optional)</span><input name="website" type="url" placeholder="https://"></label></div><label class="consent"><input name="consent" type="checkbox" required><span>Ich stimme zu, dass Commeo meine Angaben zur Bearbeitung der Potenzialanalyse und zur persönlichen Kontaktaufnahme verwendet. Hinweise zum Datenschutz habe ich zur Kenntnis genommen.</span></label>`;
+    fields.innerHTML = `<div class="field-row"><label>Vorname<input name="first" maxlength="40" autocomplete="given-name" required></label><label>Nachname<input name="last" maxlength="80" autocomplete="family-name" required></label></div><label>Unternehmen<input name="company" maxlength="40" autocomplete="organization" required></label><div class="field-row"><label>Geschäftliche E-Mail<input name="email" type="email" maxlength="80" autocomplete="email" required></label><label>Telefon für Rückfragen<input name="phone" type="tel" maxlength="40" autocomplete="tel" required></label></div><div class="field-row"><label>PLZ des Standorts<input name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" required></label><label>Website <span>(optional)</span><input name="website" type="url" maxlength="80" placeholder="https://"></label></div><label class="consent"><input name="consent" type="checkbox" required><span>Ich stimme zu, dass Commeo meine Angaben zur Bearbeitung der Potenzialanalyse und zur persönlichen Kontaktaufnahme verwendet. Hinweise zum Datenschutz habe ich zur Kenntnis genommen.</span></label>`;
     fields.querySelectorAll('input').forEach(input => {
       if(input.type==='checkbox') input.checked = Boolean(data.contact[input.name]);
       else input.value = data.contact[input.name] || '';
@@ -179,12 +181,134 @@ function render(){
   });
 }
 
-next.onclick = () => {
+async function getRecaptchaToken(){
+  if(typeof grecaptcha==='undefined' || !window.RECAPTCHA_SITE_KEY){ console.warn('[reCAPTCHA] script not loaded / site key missing – skipped'); return null; }
+  try{
+    await new Promise(resolve => grecaptcha.ready(resolve));
+    return await grecaptcha.execute(window.RECAPTCHA_SITE_KEY,{action:'lead_submit'});
+  }catch(err){
+    console.warn('[reCAPTCHA] execute failed (domain not allowed for this key?):',err);
+    return null;
+  }
+}
+
+async function verifyRecaptcha(token){
+  if(!token){ console.warn('[reCAPTCHA] no token – /api/verify-recaptcha NOT called'); return {success:true,score:null}; }
+  try{
+    const res = await fetch('/api/verify-recaptcha',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token})
+    });
+    if(!res.ok){ console.warn('[reCAPTCHA] verify endpoint returned',res.status); return {success:true,score:null}; }
+    const result = await res.json();
+    console.log('[reCAPTCHA] verify result',result);
+    return result;
+  }catch(err){
+    console.warn('[reCAPTCHA] verify request failed',err);
+    return {success:true,score:null};
+  }
+}
+
+/* ---------------- Salesforce Web-to-Lead (DEV org – NOT for production!) ----------------
+   Production: change endpoint, oid and campaignId, and set DEBUG:false. */
+const SF = {
+  DEBUG:true,
+  endpoint:'https://test.salesforce.com/servlet/servlet.WebToLead?encoding=UTF-8',
+  oid:'00D9Q00000S4kdd',
+  campaignId:'7019Q00001m2B02',
+  formContentMax:131000,
+  fieldIds:{formContent:'00N9Q00000lluVH',utmCampaignId:'00N9Q00000lluVK',utmCampaign:'00N9Q00000lluVL',utmSource:'00N9Q00000lluVM'},
+  limits:{first_name:40,last_name:80,company:40,email:80,phone:40,zip:20,url:80,utm:255}
+};
+const clip = (value,max) => String(value ?? '').trim().slice(0,max);
+
+function buildFormContent(){
+  const lines = [];
+  steps.slice(0,-1).forEach((step,index) => {
+    const value = data[index];
+    if(step.groups) step.groups.forEach(group => {
+      const answer = value?.[group.key];
+      lines.push(`${group.title}: ${Array.isArray(answer) ? answer.join(', ') : answer}`);
+    });
+    else lines.push(`${step.q}: ${value}`);
+  });
+  return clip(lines.join('\n'),SF.formContentMax);
+}
+
+function sendToSalesforce(){
+  return new Promise(resolve => {
+    const c = data.contact, camp = data.campaign;
+    const payload = {
+      oid:SF.oid,
+      retURL:location.href.split('#')[0],
+      lead_source:'Web',
+      Campaign_ID:SF.campaignId,
+      first_name:clip(c.first,SF.limits.first_name),
+      last_name:clip(c.last,SF.limits.last_name),
+      company:clip(c.company,SF.limits.company),
+      email:clip(c.email,SF.limits.email),
+      phone:clip(c.phone,SF.limits.phone),
+      zip:clip(c.zip,SF.limits.zip),
+      url:clip(c.website,SF.limits.url),
+      [SF.fieldIds.formContent]:buildFormContent(),
+      [SF.fieldIds.utmCampaignId]:clip(camp.utm_id || camp.utm_campaign_id,SF.limits.utm),
+      [SF.fieldIds.utmCampaign]:clip(camp.utm_campaign,SF.limits.utm),
+      [SF.fieldIds.utmSource]:clip(camp.utm_source,SF.limits.utm)
+    };
+    if(SF.DEBUG){
+      console.groupCollapsed('[Commeo WTL] Submit → '+SF.endpoint);
+      console.table(payload);
+      console.log(`Form Content (${payload[SF.fieldIds.formContent].length}/${SF.formContentMax}):\n${payload[SF.fieldIds.formContent]}`);
+      console.groupEnd();
+    }
+    const frame = document.createElement('iframe');
+    frame.name = 'sf_frame';
+    frame.hidden = true;
+    frame.setAttribute('aria-hidden','true');
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = SF.endpoint;
+    form.target = 'sf_frame';
+    form.acceptCharset = 'UTF-8';
+    form.hidden = true;
+    Object.entries(payload).forEach(([name,value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    });
+    let done = false;
+    const t0 = performance.now();
+    const finish = reason => { if(!done){ done = true;
+      if(SF.DEBUG) console.log(`[Commeo WTL] ${reason==='load'?'Salesforce hat geantwortet (iframe load)':'Timeout nach 10s – keine Antwort'} · ${Math.round(performance.now()-t0)}ms`);
+      resolve(); } };
+    frame.addEventListener('load',() => finish('load'));
+    setTimeout(() => finish('timeout'),10000); 
+    document.body.append(frame,form);
+    form.submit();
+  });
+}
+
+next.onclick = async () => {
   if(current < steps.length-1){
     current++;
     render();
     return;
   }
+  next.disabled = true;
+  next.textContent = 'Bitte warten…';
+  const token = await getRecaptchaToken();
+  const verification = await verifyRecaptcha(token);
+  if(!verification.success){
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({event:'lead_spam_blocked',funnel:'commeo_stromkosten',recaptcha_score:verification.score,...data.campaign});
+    document.querySelector('.quiz-card').innerHTML = `<div class="success rejected"><span>!</span><p class="section-label">Anfrage konnte nicht verarbeitet werden</p><h1>Bitte versuchen Sie es erneut.</h1><p>Ihre Anfrage konnte aus Sicherheitsgründen nicht automatisch verarbeitet werden. Bitte laden Sie die Seite neu oder kontaktieren Sie uns direkt.</p><button class="back restart" type="button">← Erneut versuchen</button></div>`;
+    document.querySelector('.restart').onclick = () => location.reload();
+    return;
+  }
+  await sendToSalesforce();
   const fit = scoreLead();
   const event = `qualified_lead_${fit.tier.toLowerCase()}`;
   window.dataLayer = window.dataLayer || [];
@@ -193,6 +317,7 @@ next.onclick = () => {
     funnel:'commeo_stromkosten',
     lead_score:fit.score,
     lead_tier:fit.tier,
+    recaptcha_score:verification.score,
     answers:steps.slice(0,-1).map((step,index)=>({question:step.short,answer:data[index]})),
     ...data.campaign
   });
