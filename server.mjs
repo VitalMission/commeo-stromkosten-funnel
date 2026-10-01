@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+for(const f of ['.env.local','.env']){try{process.loadEnvFile(f)}catch{}}
 const root=path.dirname(fileURLToPath(import.meta.url));
 const args=process.argv.slice(2);const p=args.indexOf('--port');const port=p>-1?Number(args[p+1]):4173;
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp'};
