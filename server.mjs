@@ -33,7 +33,10 @@ function bundledPageFiles() {
     fs.readFileSync(new URL('./hero-industrial-v2.png', import.meta.url)),
     fs.readFileSync(new URL('./powermagic.png', import.meta.url)),
     fs.readFileSync(new URL('./powermaster.png', import.meta.url)),
-    fs.readFileSync(new URL('./powerup.png', import.meta.url))
+    fs.readFileSync(new URL('./powerup.png', import.meta.url)),
+    fs.readFileSync(new URL('./v2/index.html', import.meta.url)),
+    fs.readFileSync(new URL('./v2/funnel.js', import.meta.url)),
+    fs.readFileSync(new URL('./v2/funnel.css', import.meta.url))
   ];
 }
 const args = process.argv.slice(2);
@@ -89,7 +92,9 @@ http.createServer(async (req, res) => {
     }
   }
 
-  const rel = clean === '/' ? 'index.html' : clean.replace(/^\//, '');
+  // Directory URLs that serve a page; /v2 is the second funnel (v2/index.html).
+  const PAGES = { '/': 'index.html', '/v2': 'v2/index.html', '/v2/': 'v2/index.html' };
+  const rel = PAGES[clean] ?? clean.replace(/^\//, '');
   const file = path.resolve(root, rel);
   if (!file.startsWith(root)) {
     res.writeHead(403);
