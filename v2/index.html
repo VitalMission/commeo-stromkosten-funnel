@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="de" data-look="b">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Stromkosten-Rechner für Gewerbe und Industrie: In 60 Sekunden sehen, wie viel Batteriespeicher und Energiemanagement Ihrem Betrieb pro Jahr sparen können.">
+<title>Stromkosten-Rechner für Gewerbe & Industrie | Commeo</title>
+<link rel="icon" href="/commeo-logo.png">
+<link rel="stylesheet" href="/v2/funnel.css?v=1">
+<!-- Wie /check.html: Cookie-Banner lädt Meta Pixel (/tracking.js) und Google Ads (/google-ads.js) erst nach Zustimmung -->
+<script src="/consent.js?v=2" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <a href="#start" class="brand"><img src="/commeo-logo.png" alt="Commeo Systems" width="140" height="19"></a>
+  <nav class="top-nav" aria-label="Seitennavigation">
+    <a href="#hebel">Einsparhebel</a>
+    <a href="#referenzen">Referenzen</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <button class="btn btn-sm" data-open-quiz>Potenzial prüfen</button>
+</header>
+
+<main id="start">
+
+<!-- HERO + LIVE-RECHNER -->
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">Für Betriebe ab 2.000 € Stromkosten / Monat</p>
+    <h1>Ihre Stromrechnung hat einen versteckten Posten: <em>Lastspitzen.</em></h1>
+    <p class="lede">Schieben Sie den Regler auf Ihre monatlichen Stromkosten und sehen Sie sofort, in welcher Größenordnung ein Batteriespeicher mit intelligentem Energiemanagement Ihre Kosten senken kann.</p>
+    <ul class="hero-points">
+      <li>Richtwert in Euro und Prozent, sofort</li>
+      <li>Persönliche Prüfung durch einen Energieexperten</li>
+      <li>Kostenfrei und unverbindlich</li>
+    </ul>
+  </div>
+
+  <div class="calc" id="rechner" aria-labelledby="calc-title">
+    <div class="calc-head">
+      <span class="calc-badge">Live-Rechner</span>
+      <h2 id="calc-title">Ihr Einsparpotenzial</h2>
+    </div>
+
+    <label class="calc-field">
+      <span class="calc-label">Monatliche Stromkosten <output id="costOut">8.000 €</output></span>
+      <input type="range" id="cost" min="2000" max="60000" step="500" value="8000" aria-describedby="costHint">
+      <span class="calc-scale" id="costHint"><span>2.000 €</span><span>60.000 €+</span></span>
+    </label>
+
+    <fieldset class="calc-field">
+      <legend class="calc-label">Gibt es teure Lastspitzen?</legend>
+      <div class="seg" data-key="peaks">
+        <button type="button" data-v="ja">Ja</button>
+        <button type="button" data-v="unsicher" class="on">Weiß nicht</button>
+        <button type="button" data-v="nein">Nein</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="calc-field">
+      <legend class="calc-label">Photovoltaik am Standort?</legend>
+      <div class="seg" data-key="pv">
+        <button type="button" data-v="ueberschuss">Ja, mit Überschuss</button>
+        <button type="button" data-v="ja">Ja</button>
+        <button type="button" data-v="nein" class="on">Nein</button>
+      </div>
+    </fieldset>
+
+    <div class="calc-result" aria-live="polite">
+      <span class="calc-result-label">Mögliche Ersparnis pro Jahr</span>
+      <strong id="saveRange">10.000 – 19.000 €</strong>
+      <span id="savePct" class="calc-pct">≈ 10 – 20 % Ihrer Stromkosten</span>
+      <div class="bars" id="bars" aria-hidden="true"></div>
+      <ul class="bar-legend" id="barLegend"></ul>
+    </div>
+
+    <button class="btn btn-block" data-open-quiz>Genaues Potenzial anfordern <span aria-hidden="true">→</span></button>
+    <p class="calc-note">Unverbindlicher Richtwert auf Basis typischer Gewerbeprofile. Die tatsächliche Ersparnis hängt von Lastgang, Tarif, Erzeugung und Anwendung ab.</p>
+  </div>
+</section>
+
+<!-- PROOF STRIP -->
+<section class="strip" aria-label="Qualitätsmerkmale">
+  <div><strong>Made in Germany</strong><span>Entwickelt & produziert in Wallenhorst</span></div>
+  <div><strong>Typgeprüft</strong><span>Mit TÜV und externen Prüfhäusern</span></div>
+  <div><strong>Hardware + Software</strong><span>Speicher & Energy Control System aus einer Hand</span></div>
+  <div><strong>360°-Begleitung</strong><span>Von der Analyse bis zum Betrieb</span></div>
+</section>
+
+<!-- HEBEL -->
+<section class="sec" id="hebel">
+  <div class="sec-head">
+    <p class="eyebrow">Woher die Ersparnis kommt</p>
+    <h2>Drei Hebel. Ein System, das sie automatisch zieht.</h2>
+    <p class="sec-intro">Ein Speicher allein spart nichts. Erst die Steuerung entscheidet, wann geladen, entladen oder gekappt wird. Genau das übernimmt das Energy Control System von Commeo, rund um die Uhr.</p>
+  </div>
+  <div class="levers">
+    <article class="lever">
+      <div class="lever-viz viz-peak" aria-hidden="true">
+        <svg viewBox="0 0 240 90" preserveAspectRatio="none"><polyline class="v-line" points="0,70 30,62 55,66 75,20 90,64 120,58 150,60 170,14 185,62 210,56 240,60"/><line class="v-cap" x1="0" y1="40" x2="240" y2="40"/></svg>
+      </div>
+      <span class="lever-no">01</span>
+      <h3>Peak Shaving</h3>
+      <p>Kurze Leistungsspitzen bestimmen den Leistungspreis, oft für ein ganzes Jahr. Der Speicher kappt sie automatisch, bevor sie teuer werden.</p>
+    </article>
+    <article class="lever">
+      <div class="lever-viz viz-pv" aria-hidden="true">
+        <svg viewBox="0 0 240 90" preserveAspectRatio="none"><path class="v-area" d="M0,90 C60,90 80,15 120,15 C160,15 180,90 240,90 Z"/><path class="v-shift" d="M150,90 C175,90 190,55 240,55 L240,90 Z"/></svg>
+      </div>
+      <span class="lever-no">02</span>
+      <h3>PV-Eigenverbrauch</h3>
+      <p>Mittags erzeugter Solarstrom wird gespeichert und dann genutzt, wenn der Betrieb ihn braucht, statt ihn günstig ins Netz einzuspeisen.</p>
+    </article>
+    <article class="lever">
+      <div class="lever-viz viz-price" aria-hidden="true">
+        <svg viewBox="0 0 240 90" preserveAspectRatio="none"><g class="v-bars"><rect x="5" y="50" width="22" height="40"/><rect x="35" y="62" width="22" height="28"/><rect x="65" y="70" width="22" height="20"/><rect x="95" y="40" width="22" height="50"/><rect x="125" y="20" width="22" height="70"/><rect x="155" y="30" width="22" height="60"/><rect x="185" y="55" width="22" height="35"/><rect x="215" y="66" width="22" height="24"/></g><g class="v-low"><rect x="35" y="62" width="22" height="28"/><rect x="65" y="70" width="22" height="20"/><rect x="215" y="66" width="22" height="24"/></g></svg>
+      </div>
+      <span class="lever-no">03</span>
+      <h3>Smarter Strombezug</h3>
+      <p>Bei dynamischen Tarifen lädt das System in günstigen Stunden und entlastet den Betrieb, wenn der Strompreis hoch ist.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ABLAUF -->
+<section class="sec sec-tint">
+  <div class="sec-head">
+    <p class="eyebrow">So läuft es ab</p>
+    <h2>Von 60 Sekunden zur belastbaren Zahl.</h2>
+  </div>
+  <ol class="flow">
+    <li><b>1</b><h3>Richtwert berechnen</h3><p>Mit dem Rechner oben erhalten Sie sofort eine erste Größenordnung.</p></li>
+    <li><b>2</b><h3>7 kurze Fragen</h3><p>Branche, Kosten, Hebel, Zeitrahmen, Entscheidung, Rolle, Daten. Jede mit einem Klick beantwortet.</p></li>
+    <li><b>3</b><h3>Experten-Einordnung</h3><p>Ein Commeo-Experte prüft Ihre Angaben und meldet sich persönlich mit einer Einschätzung.</p></li>
+    <li><b>4</b><h3>Lastgang-Analyse</h3><p>Auf Wunsch rechnet Commeo mit Ihren echten Lastgangdaten die Wirtschaftlichkeit durch.</p></li>
+  </ol>
+</section>
+
+<!-- REFERENZEN -->
+<section class="sec" id="referenzen">
+  <div class="sec-head">
+    <p class="eyebrow">Öffentlich dokumentierte Projekte</p>
+    <h2>Schon im Einsatz, vom Hotel bis zum Metallbau.</h2>
+  </div>
+  <div class="refs">
+    <article><span class="ref-kwh">65,2 kWh</span><p>Outdoorlösung zur Erhöhung der Ladeleistung für Elektrofahrzeuge und zur Absicherung des Standorts.</p><footer><strong>bill-X GmbH</strong><span>Ladeinfrastruktur</span></footer></article>
+    <article><span class="ref-kwh">120,1 kWh</span><p>Gemeinsam entwickelter Energiespeicher-Container für einen flexiblen Multi-Use-Einsatz.</p><footer><strong>Göckemeyer Metallbau GmbH</strong><span>Industrie & Multi-Use</span></footer></article>
+    <article><span class="ref-kwh">243 kWh</span><p>Energiespeicherlösung für den wirtschaftlichen Einsatz in einem Hotelbetrieb in NRW.</p><footer><strong>Ringhotel Teutoburger Wald</strong><span>Gewerbe & Hotellerie</span></footer></article>
+  </div>
+  <p class="fine">Projektangaben gemäß öffentlich veröffentlichten Commeo-Referenzen.</p>
+</section>
+
+<!-- SYSTEME -->
+<section class="sec sec-tint">
+  <div class="sec-head">
+    <p class="eyebrow">Modular statt von der Stange</p>
+    <h2>Das passende System für Ihren Standort.</h2>
+  </div>
+  <div class="systems">
+    <article><div class="sys-img"><img src="/powerup.png" alt="Commeo Indoor-Batteriesystem" loading="lazy"></div><h3>Indoor</h3><p>Kompakt und sicher in bestehende Gebäude integriert, wenn Außenfläche knapp ist.</p></article>
+    <article><div class="sys-img"><img src="/powermagic.png" alt="Commeo Outdoor-Batteriesystem" loading="lazy"></div><h3>Outdoor & Container</h3><p>Robuste, skalierbare Komplettlösungen für den Außenbereich.</p></article>
+    <article><div class="sys-img"><img src="/ecs.png" alt="Commeo Energy Control System" loading="lazy"></div><h3>Energy Control System</h3><p>Die Software, die Energieflüsse sichtbar macht und fortlaufend optimiert.</p></article>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec sec-narrow" id="faq">
+  <div class="sec-head">
+    <p class="eyebrow">Häufige Fragen</p>
+    <h2>Gut zu wissen.</h2>
+  </div>
+  <details open><summary>Wie genau ist der Rechner?</summary><p>Der Rechner liefert eine Größenordnung auf Basis typischer Gewerbeprofile. Für eine belastbare Zahl braucht es Ihre Stromabrechnung und idealerweise den Lastgang. Genau das prüft ein Commeo-Experte im nächsten Schritt.</p></details>
+  <details><summary>Lohnt sich ein Speicher auch ohne Photovoltaik?</summary><p>Häufig ja: Peak Shaving und ein smarter Strombezug funktionieren unabhängig von einer PV-Anlage. Entscheidend sind Ihr Lastprofil und Ihr Tarif.</p></details>
+  <details><summary>Welche Daten brauche ich?</summary><p>Für den Check reichen Schätzwerte. Stromabrechnung oder Lastgangdaten können Sie später nachreichen.</p></details>
+  <details><summary>Was kostet die Prüfung?</summary><p>Nichts. Die Vorprüfung und die erste persönliche Einordnung sind kostenfrei und unverbindlich.</p></details>
+  <details><summary>Was passiert mit meinen Daten?</summary><p>Ihre Angaben werden ausschließlich zur Potenzialanalyse und für eine persönliche Rückmeldung durch Commeo verwendet.</p></details>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final">
+  <div>
+    <p class="eyebrow">Noch 60 Sekunden</p>
+    <h2>Aus dem Richtwert wird Ihre Zahl.</h2>
+    <p>Sieben Klicks, dann prüft ein Commeo-Experte Ihr Einsparpotenzial persönlich.</p>
+    <button class="btn" data-open-quiz>Genaues Potenzial anfordern <span aria-hidden="true">→</span></button>
+  </div>
+  <img src="/hero-industrial-v2.png" alt="Commeo Energiespeicher-Container vor einer Gewerbehalle mit PV-Dach">
+</section>
+
+</main>
+
+<footer class="foot">
+  <img src="/commeo-logo.png" alt="Commeo Systems" width="120" height="17">
+  <p>Commeo Systems GmbH · Otto-Lilienthal-Straße 8 · 49134 Wallenhorst</p>
+  <div><a href="https://www.commeo.com/impressum/">Impressum</a><a href="https://www.commeo.com/datenschutz/">Datenschutz</a></div>
+</footer>
+
+<!-- Sticky Mobile CTA -->
+<div class="sticky-cta"><button class="btn btn-block" data-open-quiz>Potenzial prüfen <span aria-hidden="true">→</span></button></div>
+
+<!-- QUIZ (Overlay, kein Seitenwechsel) -->
+<div class="quiz" id="quiz" role="dialog" aria-modal="true" aria-labelledby="qTitle" hidden>
+  <div class="quiz-panel">
+    <div class="quiz-top">
+      <img src="/commeo-logo.png" alt="Commeo" width="110" height="15">
+      <button class="quiz-close" id="quizClose" aria-label="Schließen">×</button>
+    </div>
+    <div class="quiz-bar"><i id="quizBar"></i></div>
+    <div class="quiz-body" id="quizBody"></div>
+    <div class="quiz-foot">
+      <button class="quiz-back" id="quizBack" type="button">← Zurück</button>
+      <span class="quiz-trust">✓ Kostenfrei · ✓ Unverbindlich · ✓ Vertraulich</span>
+    </div>
+  </div>
+</div>
+
+
+<script src="/v2/funnel.js?v=1"></script>
+</body>
+</html>
