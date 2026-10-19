@@ -20,11 +20,11 @@ function fireLead(){
     });
   }
   const ads = window.commeoGoogleAds;
-  if(typeof window.gtag === 'function' && ads?.leadLabel){
-    window.gtag('event','conversion',{send_to:`${ads.id}/${ads.leadLabel}`});
-    if(ads.qualifiedLabel && ads.qualifiedTiers?.includes(leadData.tier)){
-      window.gtag('event','conversion',{send_to:`${ads.id}/${ads.qualifiedLabel}`});
-    }
+  // One Google conversion per lead: A/B count as "Qualified Lead", C as "Lead".
+  const qualified = ads?.qualifiedLabel && ads.qualifiedTiers?.includes(leadData.tier);
+  const label = qualified ? ads.qualifiedLabel : ads?.leadLabel;
+  if(typeof window.gtag === 'function' && label){
+    window.gtag('event','conversion',{send_to:`${ads.id}/${label}`});
   }
   sessionStorage.setItem('commeo_lead_fired','1');
   sessionStorage.removeItem('commeo_lead_pending');
