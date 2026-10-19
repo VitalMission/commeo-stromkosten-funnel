@@ -4,10 +4,14 @@
 // The conversion label comes from Google Ads (Goals -> Conversions -> "Lead" ->
 // Tag setup -> "Install the tag yourself": the part after the slash in
 // send_to 'AW-11362368068/<label>'). danke.js fires it for every submitted
-// Potenzialanalyse, whatever the lead tier.
+// Potenzialanalyse, whatever the lead tier. qualifiedLabel is the separate
+// "Qualified Lead (A/B)" action: danke.js fires it on top of "Lead" only for
+// tier A and B, so Google can be told which leads are worth bidding for.
 window.commeoGoogleAds = {
   id: 'AW-11362368068',
-  leadLabel: 'm3fCCLL5pIodEMT0_6kq'
+  leadLabel: 'm3fCCLL5pIodEMT0_6kq',
+  qualifiedLabel: 't9i8CMWfs6IdEMT0_6kq',
+  qualifiedTiers: ['A','B']
 };
 
 window.dataLayer = window.dataLayer || [];

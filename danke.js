@@ -22,6 +22,9 @@ function fireLead(){
   const ads = window.commeoGoogleAds;
   if(typeof window.gtag === 'function' && ads?.leadLabel){
     window.gtag('event','conversion',{send_to:`${ads.id}/${ads.leadLabel}`});
+    if(ads.qualifiedLabel && ads.qualifiedTiers?.includes(leadData.tier)){
+      window.gtag('event','conversion',{send_to:`${ads.id}/${ads.qualifiedLabel}`});
+    }
   }
   sessionStorage.setItem('commeo_lead_fired','1');
   sessionStorage.removeItem('commeo_lead_pending');
