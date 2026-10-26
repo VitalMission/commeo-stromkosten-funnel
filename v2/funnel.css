@@ -280,7 +280,11 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   .final h2:after{margin-top:15px}
   .final-img{height:260px;clip-path:polygon(0 40px,100% 0,100% 100%,0 100%)}
   .final-img picture{clip-path:polygon(0 50px,100% 10px,100% 100%,0 100%)}
-  .foot-in{flex-direction:column;align-items:flex-start;gap:14px;padding-top:37px;padding-bottom:44px}
+  .foot-in{flex-direction:column;align-items:flex-start;gap:14px;padding-top:37px;padding-bottom:20px}
+  /* consent.js hängt den Button ans Ende von <body>: auf Handy und Tablet als letzte Footer-Zeile statt schwebend, damit er nie Inhalt verdeckt */
+  html{background:var(--navy)}
+  .cookie-settings{position:static;display:block;width:100%;margin:0;padding:0 20px 32px;background:var(--navy);color:var(--soft);border:0;border-radius:0;font-size:14px;text-align:left;text-decoration:underline}
+  .cookie-settings:hover{color:#fff}
 }
 @media (max-width:640px){
   .q-answers,.q-form .row{grid-template-columns:1fr}
@@ -292,11 +296,8 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   .quiz-trust{display:none}
   .cookie-banner{grid-template-columns:1fr;bottom:0;width:100%;border-radius:0;padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
   .cookie-actions{min-width:0}
-  /* consent.js hängt den Button ans Ende von <body>: auf dem Handy als letzte Footer-Zeile statt schwebend, damit er nie Inhalt verdeckt */
-  .foot-in{padding-bottom:20px}
-  html{background:var(--navy)}
-  .cookie-settings{position:static;display:block;width:100%;margin:0 0 calc(96px + env(safe-area-inset-bottom));padding:0 20px 24px;background:var(--navy);color:var(--soft);border:0;border-radius:0;font-size:14px;text-align:left;text-decoration:underline}
-  .cookie-settings:hover{color:#fff}
+  /* Platz für die Sticky-CTA unter dem Cookie-Link */
+  .cookie-settings{margin-bottom:calc(96px + env(safe-area-inset-bottom))}
   .sticky-cta{display:block;position:fixed;left:0;right:0;bottom:0;z-index:120;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -8px 24px -12px rgba(31,55,65,.35);transform:translateY(110%);transition:transform .25s}
   .sticky-cta.show{transform:none}
 }
