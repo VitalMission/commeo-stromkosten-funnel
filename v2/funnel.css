@@ -290,10 +290,13 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   .quiz-body h2{font-size:24px}
   .quiz-foot{padding:14px 20px 22px}
   .quiz-trust{display:none}
-  .foot-in{padding-bottom:110px}
   .cookie-banner{grid-template-columns:1fr;bottom:0;width:100%;border-radius:0;padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
   .cookie-actions{min-width:0}
-  .cookie-settings{bottom:84px}
+  /* consent.js hängt den Button ans Ende von <body>: auf dem Handy als letzte Footer-Zeile statt schwebend, damit er nie Inhalt verdeckt */
+  .foot-in{padding-bottom:20px}
+  html{background:var(--navy)}
+  .cookie-settings{position:static;display:block;width:100%;margin:0 0 calc(96px + env(safe-area-inset-bottom));padding:0 20px 24px;background:var(--navy);color:var(--soft);border:0;border-radius:0;font-size:14px;text-align:left;text-decoration:underline}
+  .cookie-settings:hover{color:#fff}
   .sticky-cta{display:block;position:fixed;left:0;right:0;bottom:0;z-index:120;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -8px 24px -12px rgba(31,55,65,.35);transform:translateY(110%);transition:transform .25s}
   .sticky-cta.show{transform:none}
 }

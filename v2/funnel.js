@@ -133,7 +133,8 @@ function renderStep() {
   const s = steps[cur];
   bar.style.width = ((cur + 1) / (steps.length + 1) * 100) + '%';
   backBtn.style.visibility = cur ? 'visible' : 'hidden';
-  const head = `<p class="q-step">Frage ${cur + 1} von ${steps.length}</p><h2 id="qTitle">${s.q}</h2>${s.hint ? `<p class="q-hint">${s.hint}</p>` : ''}`;
+  // 7 Fragen + Formular: das Formular zählt nicht als Frage
+  const head = `<p class="q-step">${s.form ? 'Letzter Schritt' : `Frage ${cur + 1} von ${steps.length - 1}`}</p><h2 id="qTitle">${s.q}</h2>${s.hint ? `<p class="q-hint">${s.hint}</p>` : ''}`;
 
   if (s.form) {
     body.innerHTML = `${head}<p class="q-hint">Ein Commeo-Experte ordnet Ihr Potenzial persönlich in Euro und Prozent ein.</p>
