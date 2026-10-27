@@ -1,4 +1,4 @@
-// Commeo Stromkosten-Funnel v2 (/v2): Live-Rechner + Overlay-Quiz, Design B
+// Commeo Stromkosten-Funnel v2 (/v2): Live-Rechner + Overlay-Quiz, Design „Stromkosten-Rechner v3“ (Figma, 22.10.2026)
 const FUNNEL = 'commeo_stromkosten_v2';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -25,6 +25,7 @@ const MODEL = {
   pv: {ueberschuss: [0.03, 0.06], ja: [0.01, 0.03], nein: [0, 0]},
   cap: 0.3
 };
+// Lastspitzen: Ja/Nein-Umschalter ohne Vorauswahl. Bis jemand klickt, wird mit „unsicher“ gerechnet.
 const calc = {cost: 8000, peaks: 'unsicher', pv: 'nein'};
 
 function estimate() {
@@ -43,7 +44,7 @@ function renderCalc() {
   const e = estimate();
   $('#costOut').textContent = calc.cost >= 60000 ? '60.000 €+' : eur(calc.cost);
   $('#saveRange').textContent = `${eur(e.loEur)} – ${eur(e.hiEur)}`;
-  $('#savePct').textContent = `≈ ${Math.round(e.lo * 100)} – ${Math.round(e.hi * 100)} % Ihrer Stromkosten`;
+  $('#savePct').textContent = `etwa ${Math.round(e.lo * 100)} – ${Math.round(e.hi * 100)} % Ihrer Stromkosten`;
   const total = e.parts.reduce((s, p) => s + (p.r[0] + p.r[1]) / 2, 0) || 1;
   const shown = e.parts.filter(p => p.r[1] > 0);
   $('#bars').innerHTML = shown.map(p => `<i class="bar-${p.key}" style="flex:${((p.r[0] + p.r[1]) / 2 / total).toFixed(3)}"></i>`).join('');
@@ -60,7 +61,7 @@ $('#cost').addEventListener('input', e => { calc.cost = Number(e.target.value); 
 $$('.seg').forEach(seg => seg.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn) return;
-  $$('button', seg).forEach(b => b.classList.toggle('on', b === btn));
+  $$('button', seg).forEach(b => { b.classList.toggle('on', b === btn); b.setAttribute('aria-pressed', b === btn); });
   calc[seg.dataset.key] = btn.dataset.v;
   renderCalc();
   calcTouched();
@@ -132,7 +133,8 @@ function renderStep() {
   const s = steps[cur];
   bar.style.width = ((cur + 1) / (steps.length + 1) * 100) + '%';
   backBtn.style.visibility = cur ? 'visible' : 'hidden';
-  const head = `<p class="q-step">Frage ${cur + 1} von ${steps.length}</p><h2 id="qTitle">${s.q}</h2>${s.hint ? `<p class="q-hint">${s.hint}</p>` : ''}`;
+  // 7 Fragen + Formular: das Formular zählt nicht als Frage
+  const head = `<p class="q-step">${s.form ? 'Letzter Schritt' : `Frage ${cur + 1} von ${steps.length - 1}`}</p><h2 id="qTitle">${s.q}</h2>${s.hint ? `<p class="q-hint">${s.hint}</p>` : ''}`;
 
   if (s.form) {
     body.innerHTML = `${head}<p class="q-hint">Ein Commeo-Experte ordnet Ihr Potenzial persönlich in Euro und Prozent ein.</p>
