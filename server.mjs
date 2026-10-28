@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import adminHandler from './api/admin.js';
 import leadHandler from './api/lead.js';
+import altchaHandler from './api/altcha.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +35,8 @@ function bundledPageFiles() {
     fs.readFileSync(new URL('./powermagic.png', import.meta.url)),
     fs.readFileSync(new URL('./powermaster.png', import.meta.url)),
     fs.readFileSync(new URL('./powerup.png', import.meta.url)),
+    fs.readFileSync(new URL('./altcha/altcha.min.js', import.meta.url)),
+    fs.readFileSync(new URL('./altcha/de.js', import.meta.url)),
     fs.readFileSync(new URL('./v2/index.html', import.meta.url)),
     fs.readFileSync(new URL('./v2/funnel.js', import.meta.url)),
     fs.readFileSync(new URL('./v2/funnel.css', import.meta.url)),
@@ -100,7 +103,8 @@ function withVercelResponse(res) {
 const ROUTES = {
   '/admin': adminHandler,
   '/api/admin': adminHandler,
-  '/api/lead': leadHandler
+  '/api/lead': leadHandler,
+  '/api/altcha': altchaHandler
 };
 
 http.createServer(async (req, res) => {

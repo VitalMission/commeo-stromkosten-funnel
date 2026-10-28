@@ -66,15 +66,24 @@ function stepComplete(step,index){
   return Boolean(data[index]);
 }
 
+// Lösung der Menschen-Abfrage (ALTCHA); /api/lead speichert nur Leads mit gültiger Lösung
+let humanPayload = null;
+let sending = false;
+// Nur die eigenen Formularfelder; das ALTCHA-Widget bringt eigene Inputs mit
+const formInputs = () => [...fields.querySelectorAll('input')].filter(input => !input.closest('altcha-widget'));
+const humanBox = () => document.querySelector('#humanBox');
+
 function validateForm(){
-  const required = [...fields.querySelectorAll('input[required]')];
+  const required = formInputs().filter(input => input.required);
   const email = fields.querySelector('input[name="email"]');
   const zip = fields.querySelector('input[name="zip"]');
   const valid = required.every(input => input.type==='checkbox' ? input.checked : input.value.trim())
     && (!email || email.validity.valid)
     && (!zip || /^\d{5}$/.test(zip.value.trim()));
-  data[current] = valid;
-  next.disabled = !valid;
+  const humanHint = humanBox()?.querySelector('#humanHint');
+  if(humanHint) humanHint.hidden = !valid || Boolean(humanPayload);
+  data[current] = valid && Boolean(humanPayload);
+  next.disabled = !data[current] || sending;
 }
 
 function selectGroup(group,value){
@@ -125,13 +134,22 @@ function render(){
   hint.textContent = step.hint;
   answers.innerHTML = '';
   fields.innerHTML = '';
+  humanBox()?.remove();
   back.style.visibility = current ? 'visible' : 'hidden';
   next.textContent = current===steps.length-1 ? 'Einsparpotenzial anfordern →' : 'Weiter →';
   next.disabled = !stepComplete(step,current);
 
   if(step.form){
     fields.innerHTML = `<div class="field-row"><label>Vorname<input name="first" autocomplete="given-name" required></label><label>Nachname<input name="last" autocomplete="family-name" required></label></div><label>Unternehmen<input name="company" autocomplete="organization" required></label><div class="field-row"><label>Geschäftliche E-Mail<input name="email" type="email" autocomplete="email" required></label><label>Telefon für Rückfragen<input name="phone" type="tel" autocomplete="tel" required></label></div><div class="field-row"><label>PLZ des Standorts<input name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" required></label><label>Website <span>(optional)</span><input name="website" type="url" placeholder="https://"></label></div><label class="consent"><input name="consent" type="checkbox" required><span>Ich stimme zu, dass Commeo meine Angaben zur Bearbeitung der Potenzialanalyse und zur persönlichen Kontaktaufnahme verwendet. Hinweise zum Datenschutz habe ich zur Kenntnis genommen.</span></label>`;
-    fields.querySelectorAll('input').forEach(input => {
+    // Menschen-Abfrage direkt unter den Feldern (außerhalb von .form-fields, damit dessen Input-Styles nicht greifen)
+    fields.insertAdjacentHTML('afterend','<div class="human-box" id="humanBox"><altcha-widget challenge="/api/altcha" language="de" name="altcha"></altcha-widget><p class="human-hint" id="humanHint" hidden>Bitte bestätigen Sie kurz, dass Sie kein Roboter sind.</p><p class="form-error" id="formError" role="alert" hidden></p></div>');
+    humanPayload = null;
+    humanBox().querySelector('altcha-widget').addEventListener('statechange', event => {
+      humanPayload = event.detail?.state === 'verified' ? event.detail.payload : null;
+      if(humanPayload) humanBox().querySelector('#formError').hidden = true;
+      validateForm();
+    });
+    formInputs().forEach(input => {
       if(input.type==='checkbox') input.checked = Boolean(data.contact[input.name]);
       else input.value = data.contact[input.name] || '';
       const save = () => {
@@ -185,6 +203,9 @@ next.onclick = async () => {
     render();
     return;
   }
+  if(sending) return;
+  sending = true;
+  next.disabled = true;
   const fit = scoreLead();
 
   // Persist the lead. Scoring stays client-side for the dataLayer event below;
@@ -192,6 +213,8 @@ next.onclick = async () => {
   // Deliberately non-blocking: if the database is unreachable the visitor still
   // reaches the thank-you page and the conversion still fires. Losing the row is
   // bad, losing the conversion as well would be worse.
+  // The one exception is a rejected human check (e.g. expired): nothing was stored and the
+  // visitor can fix it right away, so they stay on the form and confirm again.
   try {
     const answers = Object.fromEntries(
       Object.keys(data)
@@ -201,9 +224,22 @@ next.onclick = async () => {
     const response = await fetch('/api/lead', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contact: data.contact, answers, campaign: data.campaign })
+      body: JSON.stringify({ contact: data.contact, answers, campaign: data.campaign, altcha: humanPayload })
     });
-    if(!response.ok) console.error('lead endpoint returned', response.status);
+    if(!response.ok){
+      console.error('lead endpoint returned', response.status);
+      const result = await response.json().catch(() => ({}));
+      if(result.fields?.includes('altcha')){
+        sending = false;
+        humanPayload = null;
+        humanBox()?.querySelector('altcha-widget')?.reset?.();
+        const error = humanBox().querySelector('#formError');
+        error.textContent = 'Die Bestätigung „Ich bin kein Roboter“ ist abgelaufen. Bitte bestätigen Sie sie erneut und senden Sie dann ab.';
+        error.hidden = false;
+        validateForm();
+        return;
+      }
+    }
   } catch(error) {
     console.error('lead persist failed', error);
   }

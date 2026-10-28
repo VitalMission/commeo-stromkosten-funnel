@@ -100,6 +100,7 @@ const data = {};       // gleiche Struktur wie quiz.js: data[0] = 'Produktion / 
 const contact = {};
 let lastFocus = null;
 let sending = false;
+let humanPayload = null; // Lösung der Menschen-Abfrage, wird mit dem Lead an /api/lead geschickt
 
 const getAnswer = s => s.key ? data[s.slot]?.[s.key] : data[s.slot];
 function setAnswer(s, v) {
@@ -144,17 +145,31 @@ function renderStep() {
         <div class="row"><label>Geschäftliche E-Mail<input name="email" type="email" autocomplete="email" required></label><label>Telefon für Rückfragen<input name="phone" type="tel" autocomplete="tel" required></label></div>
         <div class="row"><label>PLZ des Standorts<input name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" required></label><label>Website <span class="opt">(optional)</span><input name="website" type="url" placeholder="https://"></label></div>
         <label class="consent"><input name="consent" type="checkbox" required><span>Ich stimme zu, dass Commeo meine Angaben zur Bearbeitung der Potenzialanalyse und zur persönlichen Kontaktaufnahme verwendet. Hinweise zum <a href="https://www.commeo.com/datenschutz/" target="_blank" rel="noopener">Datenschutz</a> habe ich zur Kenntnis genommen.</span></label>
+        <altcha-widget class="q-human" challenge="/api/altcha" language="de" name="altcha"></altcha-widget>
+        <p class="q-human-hint" id="qHumanHint" hidden>Bitte bestätigen Sie kurz, dass Sie kein Roboter sind.</p>
+        <p class="q-error" id="qError" role="alert" hidden></p>
         <button class="btn btn-block" id="qSubmit" disabled>Einsparpotenzial anfordern →</button>
       </form>`;
     const form = $('#qForm');
     const submit = $('#qSubmit');
+    const human = $('altcha-widget', form);
+    // Nur die eigenen Felder; das ALTCHA-Widget bringt eigene Inputs mit
+    const fields = () => $$('input', form).filter(i => !i.closest('altcha-widget'));
+    humanPayload = null;
     const validate = () => {
-      $$('input', form).forEach(i => { contact[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
-      const ok = $$('input[required]', form).every(i => i.type === 'checkbox' ? i.checked : i.value.trim())
+      fields().forEach(i => { contact[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
+      const ok = fields().filter(i => i.required).every(i => i.type === 'checkbox' ? i.checked : i.value.trim())
         && form.email.validity.valid && /^\d{5}$/.test(form.zip.value.trim());
-      submit.disabled = !ok || sending;
+      $('#qHumanHint').hidden = !ok || Boolean(humanPayload);
+      submit.disabled = !ok || !humanPayload || sending;
     };
-    $$('input', form).forEach(i => {
+    // Menschen-Abfrage (ALTCHA): Absenden erst nach erfolgreicher Prüfung
+    human.addEventListener('statechange', ev => {
+      humanPayload = ev.detail?.state === 'verified' ? ev.detail.payload : null;
+      if (humanPayload) $('#qError').hidden = true;
+      validate();
+    });
+    fields().forEach(i => {
       if (i.type === 'checkbox') i.checked = Boolean(contact[i.name]); else i.value = contact[i.name] || '';
       i.addEventListener('input', validate);
       i.addEventListener('change', validate);
@@ -230,13 +245,29 @@ async function finish(submit) {
   const leadCampaign = {...campaign, funnel_version: 'v2'};
 
   // Wie /quiz.js: Lead speichern, nicht blockierend. Der Server berechnet den Score selbst.
+  // Einzige Ausnahme: Lehnt der Server die Menschen-Abfrage ab (z. B. abgelaufen), ist der Lead nicht
+  // gespeichert. Dann bleibt der Besucher im Formular und bestätigt neu, statt auf der Danke-Seite zu landen.
   try {
     const response = await fetch('/api/lead', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({contact, answers: {0: data[0], 1: data[1], 2: data[2], 3: data[3]}, campaign: leadCampaign})
+      body: JSON.stringify({contact, answers: {0: data[0], 1: data[1], 2: data[2], 3: data[3]}, campaign: leadCampaign, altcha: humanPayload})
     });
-    if (!response.ok) console.error('lead endpoint returned', response.status);
+    if (!response.ok) {
+      console.error('lead endpoint returned', response.status);
+      const result = await response.json().catch(() => ({}));
+      if (result.fields?.includes('altcha')) {
+        sending = false;
+        humanPayload = null;
+        $('altcha-widget', body)?.reset?.();
+        submit.textContent = 'Einsparpotenzial anfordern →';
+        submit.disabled = true;
+        const err = $('#qError');
+        err.textContent = 'Die Bestätigung „Ich bin kein Roboter“ ist abgelaufen. Bitte bestätigen Sie sie erneut und senden Sie dann ab.';
+        err.hidden = false;
+        return;
+      }
+    }
   } catch (error) {
     console.error('lead persist failed', error);
   }

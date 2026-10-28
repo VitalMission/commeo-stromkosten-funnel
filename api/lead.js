@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from './_db.js';
 import { scoreAnswers } from './_scoring.js';
+import { humanCheckError } from './_altcha.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -61,6 +62,10 @@ export default async function handler(req, res) {
 
   if (contact.consent !== true) errors.push('consent');
   if (errors.length) return res.status(400).json({ error: 'validation failed', fields: errors });
+
+  // Human check (ALTCHA): no lead without a valid, unused solution, also for direct POSTs that skip the form.
+  const humanError = await humanCheckError(body.altcha);
+  if (humanError) return res.status(400).json({ error: 'human check failed', fields: ['altcha'] });
 
   // Score is recomputed here; whatever the client claims is discarded.
   const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
