@@ -19,6 +19,9 @@ function origin(campaign) {
   return [network, adName].filter(Boolean).join(' · ') || 'direkt/organisch';
 }
 
+// v2/funnel.js tags its leads with funnel_version 'v2'; quiz.js (the original funnel at / → /check.html) sends none.
+const funnelOf = campaign => campaign.funnel_version === 'v2' ? 'v2' : 'v1';
+
 // Host and path of the page the form was sent from, without query or hash (those carry the UTMs and click ids).
 function pageOf(url) {
   const match = String(url ?? '').match(/^https?:\/\/([^/?#]+)([^?#]*)/i);
@@ -43,7 +46,7 @@ export async function sendSlackLead(url, { contact, answers, campaign, page }) {
     ['Firma', contact.company],
     ['E-Mail', contact.email],
     ['Quelle', origin(campaign)],
-    ['Seite', pageOf(page) || '-'],
+    ['Seite', [funnelOf(campaign), pageOf(page)].filter(Boolean).join(' · ')],
     ['Branche', typeof answers[0] === 'string' ? answers[0] : '-'],
     ['Stromkosten/Jahr', answers[1]?.cost || '-'],
     ['Eingang', `${now} (Berlin)`]
