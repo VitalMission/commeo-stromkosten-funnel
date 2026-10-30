@@ -131,6 +131,7 @@ function render(){
 
   if(step.form){
     fields.innerHTML = `<div class="field-row"><label>Vorname<input name="first" autocomplete="given-name" required></label><label>Nachname<input name="last" autocomplete="family-name" required></label></div><label>Unternehmen<input name="company" autocomplete="organization" required></label><div class="field-row"><label>Geschäftliche E-Mail<input name="email" type="email" autocomplete="email" required></label><label>Telefon für Rückfragen<input name="phone" type="tel" autocomplete="tel" required></label></div><div class="field-row"><label>PLZ des Standorts<input name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" required></label><label>Website <span>(optional)</span><input name="website" type="url" placeholder="https://"></label></div><label class="consent"><input name="consent" type="checkbox" required><span>Ich stimme zu, dass Commeo meine Angaben zur Bearbeitung der Potenzialanalyse und zur persönlichen Kontaktaufnahme verwendet. Hinweise zum Datenschutz habe ich zur Kenntnis genommen.</span></label>`;
+    CommeoSalesforce.limitInputs(fields);
     fields.querySelectorAll('input').forEach(input => {
       if(input.type==='checkbox') input.checked = Boolean(data.contact[input.name]);
       else input.value = data.contact[input.name] || '';
@@ -179,6 +180,13 @@ function render(){
   });
 }
 
+// "Question: Answer" pairs for the Salesforce "Form Content" field
+function salesforcePairs(){
+  return steps.slice(0,-1).flatMap((step,index) => step.groups
+    ? step.groups.map(group => [group.title,data[index]?.[group.key]])
+    : [[step.q,data[index]]]);
+}
+
 next.onclick = async () => {
   if(current < steps.length-1){
     current++;
@@ -207,6 +215,8 @@ next.onclick = async () => {
   } catch(error) {
     console.error('lead persist failed', error);
   }
+  // Also send the lead to Salesforce (never rejects, waits for the answer or a timeout)
+  await CommeoSalesforce.send({contact:data.contact,campaign:data.campaign,pairs:salesforcePairs()});
   const event = `qualified_lead_${fit.tier.toLowerCase()}`;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({

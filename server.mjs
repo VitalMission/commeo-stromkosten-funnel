@@ -24,6 +24,7 @@ function bundledPageFiles() {
     fs.readFileSync(new URL('./main.js', import.meta.url)),
     fs.readFileSync(new URL('./quiz.js', import.meta.url)),
     fs.readFileSync(new URL('./consent.js', import.meta.url)),
+    fs.readFileSync(new URL('./salesforce.js', import.meta.url)),
     fs.readFileSync(new URL('./danke.js', import.meta.url)),
     fs.readFileSync(new URL('./tracking.js', import.meta.url)),
     fs.readFileSync(new URL('./google-ads.js', import.meta.url)),

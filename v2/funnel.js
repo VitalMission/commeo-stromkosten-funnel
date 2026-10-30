@@ -146,6 +146,7 @@ function renderStep() {
       </form>`;
     const form = $('#qForm');
     const submit = $('#qSubmit');
+    CommeoSalesforce.limitInputs(form);
     const validate = () => {
       $$('input', form).forEach(i => { contact[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
       const ok = $$('input[required]', form).every(i => i.type === 'checkbox' ? i.checked : i.value.trim())
@@ -217,6 +218,20 @@ function scoreLead() {
   return {score, tier: score >= 75 ? 'A' : score >= 45 ? 'B' : 'C'};
 }
 
+// "Question: Answer" pairs for the Salesforce "Form Content" field. Same labels as /check.html,
+// so leads from both funnels look identical in Salesforce.
+function salesforcePairs() {
+  return [
+    ['Für welchen Standort prüfen Sie das Einsparpotenzial?', data[0]],
+    ['Monatliche Stromkosten', data[1]?.cost],
+    ['Größter Kostenhebel', data[1]?.lever],
+    ['Gewünschter Zeitraum', data[2]?.timeline],
+    ['Stand der Entscheidung', data[2]?.investment],
+    ['Ihre Rolle', data[3]?.role],
+    ['Vorhandene Energiedaten', data[3]?.data]
+  ];
+}
+
 const shortNames = ['Betrieb', 'Energieprofil', 'Projekt', 'Passung'];
 
 async function finish(submit) {
@@ -238,6 +253,9 @@ async function finish(submit) {
   } catch (error) {
     console.error('lead persist failed', error);
   }
+
+  // Also send the lead to Salesforce (never rejects, waits for the answer or a timeout)
+  await CommeoSalesforce.send({contact, campaign: leadCampaign, pairs: salesforcePairs()});
 
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
