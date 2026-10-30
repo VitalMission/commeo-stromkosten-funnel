@@ -73,17 +73,29 @@ let sending = false;
 const formInputs = () => [...fields.querySelectorAll('input')].filter(input => !input.closest('altcha-widget'));
 const humanBox = () => document.querySelector('#humanBox');
 
+// Fehlende oder ungültige Pflichtfelder, gelesen direkt aus dem Formular. Übernimmt dabei die Werte nach
+// data.contact, damit auch per Autofill eingetragene Werte (die nicht immer ein input-Event auslösen) mitgehen.
+function formProblems(){
+  const problems = [];
+  formInputs().forEach(input => {
+    data.contact[input.name] = input.type==='checkbox' ? input.checked : input.value;
+    const empty = input.type==='checkbox' ? !input.checked : !input.value.trim();
+    const invalid = (input.name==='email' && !input.validity.valid) || (input.name==='zip' && !/^\d{5}$/.test(input.value.trim()));
+    if((input.required && empty) || (!empty && invalid)){
+      problems.push(input.name==='consent' ? 'Einwilligung' : input.name==='zip' ? 'PLZ (5 Ziffern)' : input.closest('label').firstChild.textContent.trim());
+    }
+  });
+  return problems;
+}
+
+// Der Absende-Button bleibt klickbar (außer während des Sendens): Was noch fehlt, steht nach dem Klick
+// im Hinweis, statt dass der Button ohne Erklärung ausgegraut bleibt.
 function validateForm(){
-  const required = formInputs().filter(input => input.required);
-  const email = fields.querySelector('input[name="email"]');
-  const zip = fields.querySelector('input[name="zip"]');
-  const valid = required.every(input => input.type==='checkbox' ? input.checked : input.value.trim())
-    && (!email || email.validity.valid)
-    && (!zip || /^\d{5}$/.test(zip.value.trim()));
+  const valid = !formProblems().length;
   const humanHint = humanBox()?.querySelector('#humanHint');
   if(humanHint) humanHint.hidden = !valid || Boolean(humanPayload);
   data[current] = valid && Boolean(humanPayload);
-  next.disabled = !data[current] || sending;
+  next.disabled = sending;
 }
 
 function selectGroup(group,value){
@@ -204,8 +216,20 @@ next.onclick = async () => {
     return;
   }
   if(sending) return;
+  const error = humanBox().querySelector('#formError');
+  const problems = formProblems();
+  if(problems.length || !humanPayload){
+    error.textContent = problems.length
+      ? `Bitte prüfen Sie noch: ${problems.join(', ')}.`
+      : 'Bitte bestätigen Sie noch „Ich bin kein Roboter“ (Kästchen über dem Button).';
+    error.hidden = false;
+    if(!problems.length) humanBox().querySelector('altcha-widget')?.verify?.();
+    return;
+  }
+  error.hidden = true;
   sending = true;
   next.disabled = true;
+  next.textContent = 'Wird gesendet …';
   const fit = scoreLead();
 
   // Persist the lead. Scoring stays client-side for the dataLayer event below;
@@ -231,6 +255,7 @@ next.onclick = async () => {
       const result = await response.json().catch(() => ({}));
       if(result.fields?.includes('altcha')){
         sending = false;
+        next.textContent = 'Einsparpotenzial anfordern →';
         humanPayload = null;
         humanBox()?.querySelector('altcha-widget')?.reset?.();
         const error = humanBox().querySelector('#formError');
