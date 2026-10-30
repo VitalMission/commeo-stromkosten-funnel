@@ -148,7 +148,7 @@ function renderStep() {
         <altcha-widget class="q-human" challenge="/api/altcha" language="de" name="altcha"></altcha-widget>
         <p class="q-human-hint" id="qHumanHint" hidden>Bitte bestätigen Sie kurz, dass Sie kein Roboter sind.</p>
         <p class="q-error" id="qError" role="alert" hidden></p>
-        <button class="btn btn-block" id="qSubmit" disabled>Einsparpotenzial anfordern →</button>
+        <button class="btn btn-block" id="qSubmit">Einsparpotenzial anfordern →</button>
       </form>`;
     const form = $('#qForm');
     const submit = $('#qSubmit');
@@ -156,12 +156,24 @@ function renderStep() {
     // Nur die eigenen Felder; das ALTCHA-Widget bringt eigene Inputs mit
     const fields = () => $$('input', form).filter(i => !i.closest('altcha-widget'));
     humanPayload = null;
+    // Fehlende/ungültige Pflichtfelder, direkt aus dem Formular gelesen. Übernimmt die Werte nach contact,
+    // damit auch per Autofill eingetragene Werte (ohne input-Event) mitgehen.
+    const problems = () => {
+      const list = [];
+      fields().forEach(i => {
+        contact[i.name] = i.type === 'checkbox' ? i.checked : i.value;
+        const empty = i.type === 'checkbox' ? !i.checked : !i.value.trim();
+        const invalid = (i.name === 'email' && !i.validity.valid) || (i.name === 'zip' && !/^\d{5}$/.test(i.value.trim()));
+        if ((i.required && empty) || (!empty && invalid)) {
+          list.push(i.name === 'consent' ? 'Einwilligung' : i.name === 'zip' ? 'PLZ (5 Ziffern)' : i.closest('label').firstChild.textContent.trim());
+        }
+      });
+      return list;
+    };
+    // Der Button bleibt klickbar (außer beim Senden); was fehlt, steht nach dem Klick im Hinweis
     const validate = () => {
-      fields().forEach(i => { contact[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
-      const ok = fields().filter(i => i.required).every(i => i.type === 'checkbox' ? i.checked : i.value.trim())
-        && form.email.validity.valid && /^\d{5}$/.test(form.zip.value.trim());
-      $('#qHumanHint').hidden = !ok || Boolean(humanPayload);
-      submit.disabled = !ok || !humanPayload || sending;
+      $('#qHumanHint').hidden = problems().length > 0 || Boolean(humanPayload);
+      submit.disabled = sending;
     };
     // Menschen-Abfrage (ALTCHA): Absenden erst nach erfolgreicher Prüfung
     human.addEventListener('statechange', ev => {
@@ -175,7 +187,22 @@ function renderStep() {
       i.addEventListener('change', validate);
     });
     validate();
-    form.addEventListener('submit', e => { e.preventDefault(); if (!submit.disabled) finish(submit); });
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      if (sending) return;
+      const missing = problems();
+      const err = $('#qError');
+      if (missing.length || !humanPayload) {
+        err.textContent = missing.length
+          ? `Bitte prüfen Sie noch: ${missing.join(', ')}.`
+          : 'Bitte bestätigen Sie noch „Ich bin kein Roboter“ (Kästchen über dem Button).';
+        err.hidden = false;
+        if (!missing.length) human.verify?.();
+        return;
+      }
+      err.hidden = true;
+      finish(submit);
+    });
     form.first.focus();
     return;
   }
@@ -261,7 +288,7 @@ async function finish(submit) {
         humanPayload = null;
         $('altcha-widget', body)?.reset?.();
         submit.textContent = 'Einsparpotenzial anfordern →';
-        submit.disabled = true;
+        submit.disabled = false;
         const err = $('#qError');
         err.textContent = 'Die Bestätigung „Ich bin kein Roboter“ ist abgelaufen. Bitte bestätigen Sie sie erneut und senden Sie dann ab.';
         err.hidden = false;
