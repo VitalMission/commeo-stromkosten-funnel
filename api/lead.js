@@ -73,7 +73,8 @@ export default async function handler(req, res) {
   const { score, tier } = scoreAnswers(answers);
   const campaign = body.campaign && typeof body.campaign === 'object' ? body.campaign : {};
 
-  const insert = async () => {
+  let id;
+  try {
     await ensureSchema();
     const [row] = await sql`
       insert into leads (first_name, last_name, company, email, phone, zip, website, consent_at, lead_score, lead_tier, answers, campaign)
@@ -81,27 +82,27 @@ export default async function handler(req, res) {
               ${values.zip}, ${values.website}, now(), ${score}, ${tier}, ${JSON.stringify(answers)}, ${JSON.stringify(campaign)})
       returning id
     `;
-    return row.id;
-  };
-
-  // Slack runs alongside the insert and only ever reports true/false: it never changes the response.
-  const slackWebhook = process.env.SLACK_LEAD_WEBHOOK_URL;
-  const slackLead = {
-    contact: { first: values.first_name, last: values.last_name, company: values.company, email: values.email },
-    answers, campaign, page: req.headers.referer
-  };
-  const [stored, slack] = await Promise.allSettled([
-    insert(),
-    slackWebhook ? sendSlackLead(slackWebhook, slackLead) : Promise.resolve(false)
-  ]);
-  const slackOk = slack.status === 'fulfilled' && slack.value;
-  if (slack.status === 'rejected') console.error('[slack] unexpected error', slack.reason);
-
-  if (stored.status === 'rejected') {
-    console.error('lead insert failed', stored.reason);
-    console.log(`[lead] tier=${tier} db=false slack=${slackOk}`);
+    id = row.id;
+  } catch (error) {
+    console.error('lead insert failed', error);
+    console.log(`[lead] tier=${tier} db=false slack=false`);
     return res.status(500).json({ error: 'storage failed' });
   }
-  console.log(`[lead] id=${stored.value} tier=${tier} db=true slack=${slackOk}`);
-  return res.status(201).json({ id: stored.value, tier, score });
+
+  // Slack only hears about leads that are actually stored, so every message has a row in /admin behind it.
+  // It only ever reports true/false and never changes the response.
+  const slackWebhook = process.env.SLACK_LEAD_WEBHOOK_URL;
+  const slackOk = slackWebhook
+    ? await sendSlackLead(slackWebhook, {
+        id,
+        contact: { first: values.first_name, last: values.last_name, company: values.company, email: values.email },
+        answers, campaign, page: req.headers.referer
+      }).catch(error => {
+        console.error('[slack] unexpected error', error);
+        return false;
+      })
+    : false;
+
+  console.log(`[lead] id=${id} tier=${tier} db=true slack=${slackOk}`);
+  return res.status(201).json({ id, tier, score });
 }

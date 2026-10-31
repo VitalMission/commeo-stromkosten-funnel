@@ -33,7 +33,7 @@ function pageOf(url) {
  * phone number out: the channel is a heads-up, the full record stays in /admin.
  * Returns true only when Slack accepted the message; never throws.
  */
-export async function sendSlackLead(url, { contact, answers, campaign, page }) {
+export async function sendSlackLead(url, { id, contact, answers, campaign, page }) {
   if (isTestLead(contact)) return false;
 
   const shortName = `${contact.first} ${[...contact.last][0]}.`;
@@ -49,7 +49,8 @@ export async function sendSlackLead(url, { contact, answers, campaign, page }) {
     ['Seite', [funnelOf(campaign), pageOf(page)].filter(Boolean).join(' · ')],
     ['Branche', typeof answers[0] === 'string' ? answers[0] : '-'],
     ['Stromkosten/Jahr', answers[1]?.cost || '-'],
-    ['Eingang', `${now} (Berlin)`]
+    ['Eingang', `${now} (Berlin)`],
+    ['Lead-ID', id ? `#${id} (siehe /admin)` : '-']
   ];
   const body = {
     text: escapeMrkdwn(`${title} - ${shortName}, ${contact.company}`),
