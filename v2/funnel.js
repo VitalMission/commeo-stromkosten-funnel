@@ -7,7 +7,7 @@ const round = n => Math.round(n / 1000) * 1000;
 
 // --- Kampagnen-Attribution (gleiches Schema wie der bestehende Funnel) ---
 const params = new URLSearchParams(location.search);
-const campaignKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'];
+const campaignKeys = ['utm_id', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'];
 const fromUrl = Object.fromEntries(campaignKeys.map(k => [k, params.get(k)]).filter(([, v]) => v));
 if (Object.keys(fromUrl).length) sessionStorage.setItem('commeo_campaign', JSON.stringify(fromUrl));
 const campaign = JSON.parse(sessionStorage.getItem('commeo_campaign') || '{}');
