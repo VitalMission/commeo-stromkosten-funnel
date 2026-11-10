@@ -4,7 +4,7 @@
 //  - Campaign 701Sc00001OB5Kb is named "Squarevest LeadGen Campaign" in the snippet: is it the right one for this landing page?
 //  - Automation Id / Automation: sent empty on purpose (no value known; they may trigger Salesforce flows).
 //  - Form / Funnel: provisional values, see SF.form and the `funnel` argument of send().
-//  - gclid, fbclid, utm_medium/content/term have no Salesforce field: appended to Form Content (see tracking()).
+//  - The snippet has no field for gclid, fbclid, utm_medium/content/term: they are not sent to Salesforce (they stay in the database).
 window.CommeoSalesforce = (() => {
   const SF = {
     DEBUG: false,
@@ -26,15 +26,10 @@ window.CommeoSalesforce = (() => {
 
   const clip = (value, max) => String(value ?? '').trim().slice(0, max);
 
-  // Attribution without a Salesforce field of its own, appended to Form Content
-  const trackingKeys = ['utm_medium', 'utm_content', 'utm_term', 'gclid', 'fbclid'];
-  const tracking = campaign => trackingKeys.filter(key => campaign[key]).map(key => `${key}: ${campaign[key]}`);
-
   // pairs: [[question, answer], ...] -> "Question A: Answer A" per line
-  function formContent(pairs, campaign) {
+  function formContent(pairs) {
     const lines = pairs.map(([question, answer]) => `${question}: ${Array.isArray(answer) ? answer.join(', ') : answer ?? ''}`);
-    const extra = tracking(campaign);
-    return clip((extra.length ? [...lines, '', ...extra] : lines).join('\n'), SF.formContentMax);
+    return clip(lines.join('\n'), SF.formContentMax);
   }
 
   // Applies the field limits to a form's inputs (maxlength)
@@ -63,7 +58,7 @@ window.CommeoSalesforce = (() => {
         url: clip(contact.website, SF.limits.url),
         [SF.fieldIds.automationId]: '',
         [SF.fieldIds.automation]: '',
-        [SF.fieldIds.formContent]: formContent(pairs, campaign),
+        [SF.fieldIds.formContent]: formContent(pairs),
         [SF.fieldIds.form]: SF.form,
         [SF.fieldIds.funnel]: funnel,
         [SF.fieldIds.utmCampaignId]: clip(campaign.utm_id || campaign.utm_campaign_id, SF.limits.utm),
