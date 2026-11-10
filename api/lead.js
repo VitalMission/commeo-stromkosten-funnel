@@ -1,5 +1,7 @@
 import { sql, ensureSchema } from './_db.js';
 import { scoreAnswers } from './_scoring.js';
+import { humanCheckError } from './_altcha.js';
+import { sendSlackLead } from './_slack.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -62,11 +64,16 @@ export default async function handler(req, res) {
   if (contact.consent !== true) errors.push('consent');
   if (errors.length) return res.status(400).json({ error: 'validation failed', fields: errors });
 
+  // Human check (ALTCHA): no lead without a valid, unused solution, also for direct POSTs that skip the form.
+  const humanError = await humanCheckError(body.altcha);
+  if (humanError) return res.status(400).json({ error: 'human check failed', fields: ['altcha'] });
+
   // Score is recomputed here; whatever the client claims is discarded.
   const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
   const { score, tier } = scoreAnswers(answers);
   const campaign = body.campaign && typeof body.campaign === 'object' ? body.campaign : {};
 
+  let id;
   try {
     await ensureSchema();
     const [row] = await sql`
@@ -75,9 +82,27 @@ export default async function handler(req, res) {
               ${values.zip}, ${values.website}, now(), ${score}, ${tier}, ${JSON.stringify(answers)}, ${JSON.stringify(campaign)})
       returning id
     `;
-    return res.status(201).json({ id: row.id, tier, score });
+    id = row.id;
   } catch (error) {
     console.error('lead insert failed', error);
+    console.log(`[lead] tier=${tier} db=false slack=false`);
     return res.status(500).json({ error: 'storage failed' });
   }
+
+  // Slack only hears about leads that are actually stored, so every message has a row in /admin behind it.
+  // It only ever reports true/false and never changes the response.
+  const slackWebhook = process.env.SLACK_LEAD_WEBHOOK_URL;
+  const slackOk = slackWebhook
+    ? await sendSlackLead(slackWebhook, {
+        id,
+        contact: { first: values.first_name, last: values.last_name, company: values.company, email: values.email },
+        answers, campaign, page: req.headers.referer
+      }).catch(error => {
+        console.error('[slack] unexpected error', error);
+        return false;
+      })
+    : false;
+
+  console.log(`[lead] id=${id} tier=${tier} db=true slack=${slackOk}`);
+  return res.status(201).json({ id, tier, score });
 }

@@ -66,15 +66,36 @@ function stepComplete(step,index){
   return Boolean(data[index]);
 }
 
+// Lösung der Menschen-Abfrage (ALTCHA); /api/lead speichert nur Leads mit gültiger Lösung
+let humanPayload = null;
+let sending = false;
+// Nur die eigenen Formularfelder; das ALTCHA-Widget bringt eigene Inputs mit
+const formInputs = () => [...fields.querySelectorAll('input')].filter(input => !input.closest('altcha-widget'));
+const humanBox = () => document.querySelector('#humanBox');
+
+// Fehlende oder ungültige Pflichtfelder, gelesen direkt aus dem Formular. Übernimmt dabei die Werte nach
+// data.contact, damit auch per Autofill eingetragene Werte (die nicht immer ein input-Event auslösen) mitgehen.
+function formProblems(){
+  const problems = [];
+  formInputs().forEach(input => {
+    data.contact[input.name] = input.type==='checkbox' ? input.checked : input.value;
+    const empty = input.type==='checkbox' ? !input.checked : !input.value.trim();
+    const invalid = (input.name==='email' && !input.validity.valid) || (input.name==='zip' && !/^\d{5}$/.test(input.value.trim()));
+    if((input.required && empty) || (!empty && invalid)){
+      problems.push(input.name==='consent' ? 'Einwilligung' : input.name==='zip' ? 'PLZ (5 Ziffern)' : input.closest('label').firstChild.textContent.trim());
+    }
+  });
+  return problems;
+}
+
+// Der Absende-Button bleibt klickbar (außer während des Sendens): Was noch fehlt, steht nach dem Klick
+// im Hinweis, statt dass der Button ohne Erklärung ausgegraut bleibt.
 function validateForm(){
-  const required = [...fields.querySelectorAll('input[required]')];
-  const email = fields.querySelector('input[name="email"]');
-  const zip = fields.querySelector('input[name="zip"]');
-  const valid = required.every(input => input.type==='checkbox' ? input.checked : input.value.trim())
-    && (!email || email.validity.valid)
-    && (!zip || /^\d{5}$/.test(zip.value.trim()));
-  data[current] = valid;
-  next.disabled = !valid;
+  const valid = !formProblems().length;
+  const humanHint = humanBox()?.querySelector('#humanHint');
+  if(humanHint) humanHint.hidden = !valid || Boolean(humanPayload);
+  data[current] = valid && Boolean(humanPayload);
+  next.disabled = sending;
 }
 
 function selectGroup(group,value){
@@ -125,6 +146,7 @@ function render(){
   hint.textContent = step.hint;
   answers.innerHTML = '';
   fields.innerHTML = '';
+  humanBox()?.remove();
   back.style.visibility = current ? 'visible' : 'hidden';
   next.textContent = current===steps.length-1 ? 'Einsparpotenzial anfordern →' : 'Weiter →';
   next.disabled = !stepComplete(step,current);
@@ -132,7 +154,15 @@ function render(){
   if(step.form){
     fields.innerHTML = `<div class="field-row"><label>Vorname<input name="first" autocomplete="given-name" required></label><label>Nachname<input name="last" autocomplete="family-name" required></label></div><label>Unternehmen<input name="company" autocomplete="organization" required></label><div class="field-row"><label>Geschäftliche E-Mail<input name="email" type="email" autocomplete="email" required></label><label>Telefon für Rückfragen<input name="phone" type="tel" autocomplete="tel" required></label></div><div class="field-row"><label>PLZ des Standorts<input name="zip" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]{5}" required></label><label>Website <span>(optional)</span><input name="website" type="url" placeholder="https://"></label></div><label class="consent"><input name="consent" type="checkbox" required><span>Ich stimme zu, dass Commeo meine Angaben zur Bearbeitung der Potenzialanalyse und zur persönlichen Kontaktaufnahme verwendet. Hinweise zum Datenschutz habe ich zur Kenntnis genommen.</span></label>`;
     CommeoSalesforce.limitInputs(fields);
-    fields.querySelectorAll('input').forEach(input => {
+    // Menschen-Abfrage direkt unter den Feldern (außerhalb von .form-fields, damit dessen Input-Styles nicht greifen)
+    fields.insertAdjacentHTML('afterend','<div class="human-box" id="humanBox"><altcha-widget challenge="/api/altcha" language="de" name="altcha"></altcha-widget><p class="human-hint" id="humanHint" hidden>Bitte bestätigen Sie kurz, dass Sie kein Roboter sind.</p><p class="form-error" id="formError" role="alert" hidden></p></div>');
+    humanPayload = null;
+    humanBox().querySelector('altcha-widget').addEventListener('statechange', event => {
+      humanPayload = event.detail?.state === 'verified' ? event.detail.payload : null;
+      if(humanPayload) humanBox().querySelector('#formError').hidden = true;
+      validateForm();
+    });
+    formInputs().forEach(input => {
       if(input.type==='checkbox') input.checked = Boolean(data.contact[input.name]);
       else input.value = data.contact[input.name] || '';
       const save = () => {
@@ -193,6 +223,21 @@ next.onclick = async () => {
     render();
     return;
   }
+  if(sending) return;
+  const error = humanBox().querySelector('#formError');
+  const problems = formProblems();
+  if(problems.length || !humanPayload){
+    error.textContent = problems.length
+      ? `Bitte prüfen Sie noch: ${problems.join(', ')}.`
+      : 'Bitte bestätigen Sie noch „Ich bin kein Roboter“ (Kästchen über dem Button).';
+    error.hidden = false;
+    if(!problems.length) humanBox().querySelector('altcha-widget')?.verify?.();
+    return;
+  }
+  error.hidden = true;
+  sending = true;
+  next.disabled = true;
+  next.textContent = 'Wird gesendet …';
   const fit = scoreLead();
 
   // Persist the lead. Scoring stays client-side for the dataLayer event below;
@@ -200,6 +245,8 @@ next.onclick = async () => {
   // Deliberately non-blocking: if the database is unreachable the visitor still
   // reaches the thank-you page and the conversion still fires. Losing the row is
   // bad, losing the conversion as well would be worse.
+  // The one exception is a rejected human check (e.g. expired): nothing was stored and the
+  // visitor can fix it right away, so they stay on the form and confirm again.
   try {
     const answers = Object.fromEntries(
       Object.keys(data)
@@ -209,14 +256,28 @@ next.onclick = async () => {
     const response = await fetch('/api/lead', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contact: data.contact, answers, campaign: data.campaign })
+      body: JSON.stringify({ contact: data.contact, answers, campaign: data.campaign, altcha: humanPayload })
     });
-    if(!response.ok) console.error('lead endpoint returned', response.status);
+    if(!response.ok){
+      console.error('lead endpoint returned', response.status);
+      const result = await response.json().catch(() => ({}));
+      if(result.fields?.includes('altcha')){
+        sending = false;
+        next.textContent = 'Einsparpotenzial anfordern →';
+        humanPayload = null;
+        humanBox()?.querySelector('altcha-widget')?.reset?.();
+        const error = humanBox().querySelector('#formError');
+        error.textContent = 'Die Bestätigung „Ich bin kein Roboter“ ist abgelaufen. Bitte bestätigen Sie sie erneut und senden Sie dann ab.';
+        error.hidden = false;
+        validateForm();
+        return;
+      }
+    }
   } catch(error) {
     console.error('lead persist failed', error);
   }
   // Also send the lead to Salesforce (never rejects, waits for the answer or a timeout)
-  await CommeoSalesforce.send({contact:data.contact,campaign:data.campaign,pairs:salesforcePairs()});
+  await CommeoSalesforce.send({contact:data.contact,campaign:data.campaign,pairs:salesforcePairs(),funnel:'commeo_stromkosten'});
   const event = `qualified_lead_${fit.tier.toLowerCase()}`;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({

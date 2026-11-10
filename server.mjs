@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import adminHandler from './api/admin.js';
 import leadHandler from './api/lead.js';
+import altchaHandler from './api/altcha.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,9 +36,37 @@ function bundledPageFiles() {
     fs.readFileSync(new URL('./powermagic.png', import.meta.url)),
     fs.readFileSync(new URL('./powermaster.png', import.meta.url)),
     fs.readFileSync(new URL('./powerup.png', import.meta.url)),
+    fs.readFileSync(new URL('./altcha/altcha.min.js', import.meta.url)),
+    fs.readFileSync(new URL('./altcha/de.js', import.meta.url)),
     fs.readFileSync(new URL('./v2/index.html', import.meta.url)),
     fs.readFileSync(new URL('./v2/funnel.js', import.meta.url)),
-    fs.readFileSync(new URL('./v2/funnel.css', import.meta.url))
+    fs.readFileSync(new URL('./v2/funnel.css', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/commeo-logo-negativ.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/hebel-peak.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/hebel-pv.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/hebel-strom.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/icon-check.svg', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-billx.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-boehme.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-fitness.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-goeckemeyer.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-ringhotel.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-soprema.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-tortenschmied.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/ref-wilo.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-cube.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-e2315.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-e5.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-ecs.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-powerbackup.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-powermagic.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-powersecure.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/sys-powerup.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/windpark-1480.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/img/windpark-760.webp', import.meta.url)),
+    fs.readFileSync(new URL('./v2/fonts/barlow-400.woff2', import.meta.url)),
+    fs.readFileSync(new URL('./v2/fonts/barlow-500.woff2', import.meta.url)),
+    fs.readFileSync(new URL('./v2/fonts/barlow-700.woff2', import.meta.url))
   ];
 }
 const args = process.argv.slice(2);
@@ -48,7 +77,9 @@ const types = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png',
-  '.webp': 'image/webp'
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2'
 };
 
 /**
@@ -73,7 +104,8 @@ function withVercelResponse(res) {
 const ROUTES = {
   '/admin': adminHandler,
   '/api/admin': adminHandler,
-  '/api/lead': leadHandler
+  '/api/lead': leadHandler,
+  '/api/altcha': altchaHandler
 };
 
 http.createServer(async (req, res) => {
