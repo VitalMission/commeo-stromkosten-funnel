@@ -26,6 +26,14 @@ function fireLead(){
   if(typeof window.gtag === 'function' && label){
     window.gtag('event','conversion',{send_to:`${ads.id}/${label}`});
   }
+  const ga4 = window.commeoGA4;
+  if(typeof window.gtag === 'function' && ga4?.id){
+    window.gtag('event','generate_lead',{
+      send_to:ga4.id,
+      lead_tier:leadData.tier,
+      lead_score:leadData.score
+    });
+  }
   sessionStorage.setItem('commeo_lead_fired','1');
   sessionStorage.removeItem('commeo_lead_pending');
 }

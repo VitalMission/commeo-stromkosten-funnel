@@ -14,17 +14,23 @@ window.commeoGoogleAds = {
   qualifiedTiers: ['A','B']
 };
 
+// Google Analytics 4 property. Shares the gtag.js loaded below with Google Ads,
+// so it also only runs after "Alle akzeptieren" (on /, /v2, /check.html, /danke.html).
+window.commeoGA4 = { id: 'G-T7C56N311H' };
+
 window.dataLayer = window.dataLayer || [];
 window.gtag = function(){ window.dataLayer.push(arguments); };
-// Consent Mode v2: this file only ever runs after "Alle akzeptieren".
+// Consent Mode v2: this file only ever runs after "Alle akzeptieren", and that
+// consent now also covers Google Analytics, so analytics_storage is granted.
 window.gtag('consent', 'default', {
   ad_storage: 'granted',
   ad_user_data: 'granted',
   ad_personalization: 'granted',
-  analytics_storage: 'denied'
+  analytics_storage: 'granted'
 });
 window.gtag('js', new Date());
 window.gtag('config', window.commeoGoogleAds.id);
+window.gtag('config', window.commeoGA4.id);
 
 (function(d){
   const script = d.createElement('script');

@@ -1,8 +1,8 @@
 (function(){
-  // v2: the earlier consent only covered the Meta Pixel. Google Ads was added
+  // v3: v2 covered the Meta Pixel and Google Ads. Google Analytics 4 was added
   // later, so everyone is asked again rather than reusing a narrower yes.
-  const key = 'commeo_cookie_consent_v2';
-  const scripts = ['/tracking.js?v=2','/google-ads.js?v=4'];
+  const key = 'commeo_cookie_consent_v3';
+  const scripts = ['/tracking.js?v=2','/google-ads.js?v=5'];
 
   function notify(value){
     window.dispatchEvent(new CustomEvent('commeo:marketing-consent',{detail:{value}}));
@@ -26,7 +26,8 @@
   }
 
   function removeMarketingCookies(){
-    ['_fbp','_fbc','_gcl_au','_gcl_aw','_gcl_dc'].forEach(name => {
+    const gaCookies = document.cookie.split(';').map(c => c.trim().split('=')[0]).filter(n => n === '_ga' || n.startsWith('_ga_'));
+    ['_fbp','_fbc','_gcl_au','_gcl_aw','_gcl_dc',...gaCookies].forEach(name => {
       document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
       document.cookie = `${name}=; Max-Age=0; path=/; domain=.${location.hostname}; SameSite=Lax`;
     });
@@ -60,7 +61,7 @@
       <div class="cookie-copy">
         <p class="section-label">Datenschutz-Einstellungen</p>
         <h2 id="cookie-title">Dürfen wir die Nutzung dieser Seite messen?</h2>
-        <p>Wir verwenden den Meta Pixel und das Conversion-Tracking von Google Ads, um Kampagnen auszuwerten und den Funnel zu verbessern. Beide werden erst nach Ihrer Zustimmung geladen. Notwendige Funktionen des Potenzial-Checks funktionieren auch ohne Marketing-Cookies.</p>
+        <p>Wir verwenden den Meta Pixel, das Conversion-Tracking von Google Ads und Google Analytics, um Kampagnen auszuwerten und den Funnel zu verbessern. Alle drei werden erst nach Ihrer Zustimmung geladen. Notwendige Funktionen des Potenzial-Checks funktionieren auch ohne Marketing-Cookies.</p>
         <a href="https://www.commeo.com/datenschutz/" target="_blank" rel="noopener">Mehr zum Datenschutz</a>
       </div>
       <div class="cookie-actions">
